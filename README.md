@@ -1,6 +1,6 @@
-# SINGLE Node Attack For Fooling Graph Neural Networks
+# Single-Node Attack For Fooling Graph Neural Networks
 
-This repository is the official implementation of SINGLE Node Attack For Fooling Graph Neural Networks. 
+This repository is the official implementation of Single-Node Attack For Fooling Graph Neural Networks. 
 
 ## Requirements
 
