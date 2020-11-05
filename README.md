@@ -61,5 +61,3 @@ The available input arguments are:
 * --distance (ONLY FOR THE DISTANCE ATTACK): the maximum distance
 
 * --seed: a seed for reproducability
-
-## Results
