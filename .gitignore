@@ -1,0 +1,5 @@
+.idea
+*.pyc
+**/__pycache__
+datasets/twitter/glove.pkl
+datasets/twitter/processed
