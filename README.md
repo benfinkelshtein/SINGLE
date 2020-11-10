@@ -61,3 +61,14 @@ The available input arguments are:
 * `--distance` (ONLY FOR THE DISTANCE ATTACK): the maximum distance
 
 * `--seed`: a seed for reproducability
+
+## Citation
+If you want to cite this work, please use this bibtex entry:
+```
+@article{finkelshtein2020single,
+  title={Single-Node Attack for Fooling Graph Neural Networks},
+  author={Finkelshtein, Ben and Baskin, Chaim and Zheltonovzhskii, Evgenii and Alon, Uri},
+  journal={arXiv preprint arXiv:2011.03574},
+  year={2020}
+}
+```
