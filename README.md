@@ -3,8 +3,12 @@
 This repository is the official implementation of Single-Node Attack For Fooling Graph Neural Networks. 
 
 ## Requirements
+This project is based on PyTorch 1.6.0 and the PyTorch Geometric library.
 
-To install requirements:
+First, install PyTorch from the official website: https://pytorch.org/.
+Then install PyTorch Geometric: https://pytorch-geometric.readthedocs.io/en/latest/notes/installation.html
+(PyTorch Geometric must be installed according to the instructions there).
+Eventually, run the following to verify that all dependencies are satisfied:
 
 ```setup
 pip install -r requirements.txt
