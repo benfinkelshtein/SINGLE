@@ -1,40 +1,63 @@
-from classes.basic_classes import DataSet
-from model_functions.basicTrainer import basicTrainer
+from classes.basic_classes import GNN_TYPE
+from model_functions.basicTrainer import basicTrainer, test
+from model_functions.robust_gcn import train
 from helpers.fileNamer import fileNamer
 from adversarial_attack.adversarialTrainer import adversarialTrainer
 from helpers.getGitPath import getGitPath
+from classes.basic_classes import DatasetType
+from model_functions.robust_gcn import RobustGCNModel
+from dataset_functions.graph_dataset import GraphDataset
+from classes.approach_classes import Approach
 
+from typing import Tuple
 import os.path as osp
 import torch
 from torch import nn
 from torch.nn import functional as F
 import copy
+import numpy as np
 
 
 class Model(torch.nn.Module):
-    def __init__(self, gnn_type, num_layers, dataset, device):
+    """
+        Generic model class
+        each gnn sets a different model
+
+        Parameters
+        ----------
+        gnn_type: GNN_TYPE
+        num_layers: int
+        dataset: GraphDataset
+        device: torch.cuda
+    """
+    def __init__(self, gnn_type: GNN_TYPE, num_layers: int, dataset: GraphDataset, device: torch.cuda):
         super(Model, self).__init__()
         self.attack = False
         self.layers = nn.ModuleList().to(device)
+        data = dataset.data
 
-        if dataset is DataSet.TWITTER:
+        if hasattr(dataset, 'glove_matrix'):
             self.glove_matrix = dataset.glove_matrix.to(device)
         else:
-            self.glove_matrix = torch.eye(dataset.data.x.shape[1]).to(device)
+            self.glove_matrix = torch.eye(data.x.shape[1]).to(device)
 
         num_initial_features = dataset.num_features
         num_final_features = dataset.num_classes
         hidden_dims = [32] * (num_layers - 1)
         all_channels = [num_initial_features] + hidden_dims + [num_final_features]
 
-        # gcn layers
-        for in_channel, out_channel in zip(all_channels[:-1], all_channels[1:]):
-            self.layers.append(gnn_type.get_layer(in_dim=in_channel, out_dim=out_channel).to(device))
+        # gnn layers
+        if gnn_type is GNN_TYPE.SGC:
+            self.layers.append(gnn_type.get_layer(in_dim=num_initial_features, out_dim=num_final_features,
+                                                  K=num_layers).to(device))
+        else:
+            for in_channel, out_channel in zip(all_channels[:-1], all_channels[1:]):
+                self.layers.append(gnn_type.get_layer(in_dim=in_channel, out_dim=out_channel).to(device))
 
         self.name = gnn_type.string()
         self.num_layers = num_layers
         self.device = device
-        self.edge_index = dataset.data.edge_index.to(device)
+        self.edge_index = data.edge_index.to(device)
         self.edge_weight = None
 
     def forward(self, x=None):
@@ -50,12 +73,49 @@ class Model(torch.nn.Module):
         x = self.layers[-1](x=x, edge_index=self.edge_index, edge_weight=self.edge_weight).to(self.device)
         return F.log_softmax(x, dim=1).to(self.device)
 
-    def getInput(self):
+    def getInput(self) -> torch.Tensor:
+        """
+            a get function for the models input
+
+            Returns
+            ----------
+            model_input: torch.Tensor
+        """
+        raise NotImplementedError
+
+    def injectNode(self, dataset: GraphDataset, attacked_node: torch.Tensor) -> torch.Tensor:
+        """
+            injects a node to the model
+
+            Parameters
+            ----------
+            dataset: GraphDataset
+            attacked_node: torch.Tensor - the victim/attacked node
+
+            Returns
+            -------
+            malicious_node: torch.Tensor - the injected/attacker/malicious node
+            dataset: GraphDataset - the injected dataset
+        """
+        raise NotImplementedError
+
+    def removeInjectedNode(self, attack):
+        """
+            removes the injected node from the model
+
+            Parameters
+            ----------
+            attack: oneGNNAttack
+        """
         raise NotImplementedError
 
 
 class NodeModel(Model):
-    def __init__(self, gnn_type, num_layers, dataset, device):
+    """
+        model for node attacks
+        more information at Model
+    """
+    def __init__(self, gnn_type: GNN_TYPE, num_layers: int, dataset: GraphDataset, device: torch.cuda):
         super(NodeModel, self).__init__(gnn_type, num_layers, dataset, device)
         data = dataset.data
         node_attribute_list = []
@@ -63,48 +123,135 @@ class NodeModel(Model):
             node_attribute_list += [torch.nn.Parameter(data.x[idx].unsqueeze(0), requires_grad=False).to(device)]
         self.node_attribute_list = node_attribute_list
 
-    def getInput(self):
+    def getInput(self) -> torch.Tensor:
         return torch.cat(self.node_attribute_list, dim=0)
 
-    def setNodesAttribute(self, idx_node, idx_attribute, value):
+    def setNodesAttribute(self, idx_node: torch.Tensor, idx_attribute: torch.Tensor, value: float):
+        """
+            sets a value for a specific node's specific attribute in the node_attribute_list
+
+            Parameters
+            ----------
+            idx_node: torch.Tensor - the specific node
+            idx_attribute: torch.Tensor - the specific attribute
+            value: float
+        """
         self.node_attribute_list[idx_node][0][idx_attribute] = value
 
-    def setNodesAttributes(self, idx_node, values):
+    def setNodesAttributes(self, idx_node: torch.Tensor, values: torch.Tensor):
+        """
+            sets the attributes for a specific node in the node_attribute_list
+
+            Parameters
+            ----------
+            idx_node: torch.Tensor - the specific node
+            values: torch.Tensor
+        """
         self.node_attribute_list[idx_node][0] = values
+
+    def injectNode(self, dataset: GraphDataset, attacked_node: torch.Tensor) -> torch.Tensor:
+        """
+            information at the generic base class Model
+        """
+        data = dataset.data
+
+        # creating injection values
+        malicious_node = torch.tensor([dataset.data.num_nodes]).to(self.device)
+        injected_attributes = torch.zeros(size=(1, data.num_features)).to(self.device)
+        if dataset.type is DatasetType.CONTINUOUS:
+            injected_attributes = injected_attributes + 0.1
+        elif dataset.type is DatasetType.DISCRETE:
+            injected_attributes[0][0] = 1
+        injected_edge = torch.tensor([[malicious_node.item()], [attacked_node.item()]]).to(self.device)
+
+        # injecting to the model
+        self.node_attribute_list += [torch.nn.Parameter(injected_attributes, requires_grad=False).to(self.device)]
+        self.edge_index = torch.cat((self.edge_index, injected_edge), dim=1).type(torch.LongTensor).to(self.device)
+
+        # injecting to the data
+        false_tensor = torch.tensor([False]).to(self.device)
+        data.train_mask = torch.cat((data.train_mask, false_tensor), dim=0)
+        data.val_mask = torch.cat((data.val_mask, false_tensor), dim=0)
+        data.test_mask = torch.cat((data.test_mask, false_tensor), dim=0)
+        data.y = torch.cat((data.y, torch.tensor([0]).to(self.device)), dim=0)
+        return malicious_node, dataset
+
+    def removeInjectedNode(self, attack):
+        """
+            information at the generic base class Model
+        """
+        dataset = attack.getDataset()
+        data = dataset.data
+
+        # removing injection from the model
+        self.node_attribute_list.pop()
+        self.edge_index = self.edge_index[:, :-1]
+
+        # removing injection from the data
+        data.train_mask = data.train_mask[:-1]
+        data.val_mask = data.val_mask[:-1]
+        data.test_mask = data.test_mask[:-1]
+        data.y = data.y[:-1]
+        attack.setDataset(dataset=dataset)
 
 
 class EdgeModel(Model):
-    def __init__(self, gnn_type, num_layers, dataset, device):
+    """
+        model for edge attacks
+        more information at Model
+    """
+    def __init__(self, gnn_type: GNN_TYPE, num_layers: int, dataset: GraphDataset, device: torch.cuda):
         super(EdgeModel, self).__init__(gnn_type, num_layers, dataset, device)
         data = dataset.data
         self.x = data.x.to(device)
         self.edge_weight = torch.nn.Parameter(torch.ones(data.edge_index.shape[1]), requires_grad=False).to(device)
 
-    def getInput(self):
+    def getInput(self) -> torch.Tensor:
+        """
+            information at the generic base class Model
+        """
         return self.x
 
-    # a helper function which adds the new possible edges in 2 modes
-    # full = True : adds all edges from the whole graph to the neighbourhood
-    # full = False : adds all edges from malicious index to the neighbourhood
     @torch.no_grad()
-    def expandEdges(self, dataset, attacked_node, neighbours, device, expansion_mode):
-        data = dataset.data
-        clique = torch.cat((attacked_node, neighbours))
-        n = data.num_nodes
+    def expandEdgesByMalicious(self, dataset: GraphDataset, approach: Approach, neighbours: torch.Tensor,
+                               device: torch.cuda) -> torch.Tensor:
+        """
+            adds edges with zero weights to the malicious/attacker node according to the attack approach
 
+            Parameters
+            ----------
+            dataset: GraphDataset
+            approach: Approach
+            neighbours: torch.Tensor - 2d-tensor that includes
+                                       1st-col - the nodes that are in the victim nodes BFS neighborhood
+                                       2nd-col - the distance of said nodes from the victim node
+            device: torch.cuda
+
+            Returns
+            ----------
+            malicious_index: torch.Tensor - the injected/attacker/malicious node index
+        """
+        data = dataset.data
+        n = data.num_nodes
         zero_dim_edge_index = []
         first_dim_edge_index = []
-        for neighbour_num, neighbour in enumerate(clique):
+        malicious_index = None
+
+        flag_global_approach = approach.isGlobal()
+        if not approach.isGlobal():
+            malicious_index = np.random.choice(data.num_nodes, 1).item()
+
+        for neighbour_num, neighbour in enumerate(neighbours):
             ignore = dataset.reversed_arr_list[neighbour]  # edges which already exist
 
             tmp_zero_dim_edge_index = []
-            if expansion_mode["full"]:
+            if flag_global_approach:
                 # adds all edges from the whole graph to the neighbourhood
                 tmp_zero_dim_edge_index = [idx for idx in range(n) if idx not in ignore]
             else:
                 # adds all edges from malicious index to the neighbourhood
-                if expansion_mode["malicious_index"] not in ignore:
-                    tmp_zero_dim_edge_index = [expansion_mode["malicious_index"]]
+                if malicious_index not in ignore:
+                    tmp_zero_dim_edge_index = [malicious_index]
 
             zero_dim_edge_index += tmp_zero_dim_edge_index
             first_dim_edge_index += [neighbour.item()] * len(tmp_zero_dim_edge_index)
@@ -116,13 +263,32 @@ class EdgeModel(Model):
             self.edge_index = torch.cat((self.edge_index, model_edge_index), dim=1)
             self.edge_weight.data = torch.cat((self.edge_weight.data, model_edge_weight))
 
+        return malicious_index
+
 
 class ModelWrapper(object):
-    def __init__(self, node_model, gnn_type, num_layers, dataset, patience, device, seed):
+    """
+        a wrapper which includes the model and its generic functions
+
+        Parameters
+        ----------
+        node_model: bool - whether or not this is a node-based-model
+        gnn_type: GNN_TYPE
+        num_layers: int
+        dataset: GraphDataset
+        patience: int
+        device: torch.cuda
+        seed: int
+    """
+    def __init__(self, node_model: bool, gnn_type: GNN_TYPE, num_layers: int, dataset: GraphDataset,
+                 patience: int, device: torch.cuda, seed: int):
         self.gnn_type = gnn_type
         self.num_layers = num_layers
         if node_model:
-            self.model = NodeModel(gnn_type, num_layers, dataset, device)
+            if gnn_type is GNN_TYPE.ROBUST_GCN:
+                self.model = RobustGCNModel(num_layers, dataset, device)
+            else:
+                self.model = NodeModel(gnn_type, num_layers, dataset, device)
         else:
             self.model = EdgeModel(gnn_type, num_layers, dataset, device)
         self.node_model = node_model
@@ -135,20 +301,42 @@ class ModelWrapper(object):
         self.clean = None
 
     def _setOptimizer(self):
+        """
+            sets an optimizer for the Model object
+        """
         model = self.model
+        # Only perform weight-decay on first convolution.
         list_dict_param = [dict(params=model.layers[0].parameters(), weight_decay=5e-4)]
         for layer in model.layers[1:]:
             list_dict_param += [dict(params=layer.parameters(), weight_decay=0)]
         self._setLR()
-        self.optimizer = torch.optim.Adam(list_dict_param, lr=self.lr)  # Only perform weight-decay on first convolution.
+        self.optimizer = torch.optim.Adam(list_dict_param, lr=self.lr)
 
     def _setLR(self):
+        """
+            sets the learn rate
+        """
         self.lr = 0.01
 
-    def setModel(self, model):
+    def setModel(self, model: Model):
+        """
+            sets a specific model
+
+            Parameters
+            ----------
+            model: Model
+        """
         self.model = copy.deepcopy(model)
 
-    def train(self, dataset, attack=None):
+    def train(self, dataset: GraphDataset, attack=None):
+        """
+            prepare for train
+
+            Parameters
+            ----------
+            dataset: GraphDataset
+            attack: oneGNNAttack
+        """
         model = self.model
         folder_name = osp.join(getGitPath(), 'models')
         if attack is None:
@@ -166,7 +354,7 @@ class ModelWrapper(object):
         # load model and optimizer
         if not osp.exists(model_path):
             # train model
-            model, model_log, test_acc = self.useTrainer(data=dataset.data, attack=attack)
+            model, model_log, test_acc = self.useTrainer(dataset=dataset, attack=attack)
             torch.save((model.state_dict(), model_log, test_acc), model_path)
         else:
             model_state_dict, model_log, test_acc = torch.load(model_path)
@@ -175,17 +363,55 @@ class ModelWrapper(object):
         self.basic_log = model_log
         self.clean = test_acc
 
-    def useTrainer(self, data, attack=None):
+    def useTrainer(self, dataset: GraphDataset, attack=None) -> Tuple[Model, str, torch.Tensor]:
+        """
+            trains the model
+
+            Parameters
+            ----------
+            dataset: GraphDataset
+            attack: oneGNNAttack
+
+            Returns
+            -------
+            model: Model
+            model_log: str
+            test_accuracy: torch.Tensor
+        """
+        data = dataset.data
+        if self.gnn_type == GNN_TYPE.ROBUST_GCN and dataset.type is DatasetType.DISCRETE:
+            idx_train = data.train_mask.nonzero().T[0]
+            idx_train = idx_train.cpu().detach().numpy()
+
+            idx_unlabeled = data.test_mask.nonzero().T[0]
+            idx_unlabeled = idx_unlabeled.cpu().detach().numpy()
+
+            train(gcn_model=self.model, X=data.x, y=data.y, idx_train=idx_train, idx_unlabeled=idx_unlabeled, q=3)
+            train_accuracy, val_accuracy, test_accuracy = test(model=self.model, data=data)
+            model_log = 'Basic Model - Train: {:.4f}, Val: {:.4f}, Test: {:.4f}' \
+                .format(train_accuracy, val_accuracy, test_accuracy)
+            return self.model, model_log, test_accuracy
+
         return basicTrainer(self.model, self.optimizer, data, self.patience)
 
 
 class AdversarialModelWrapper(ModelWrapper):
+    """
+        a wrapper which includes an adversarial model
+        more information at ModelWrapper
+    """
     def __init__(self, node_model, gnn_type, num_layers, dataset, patience, device, seed):
         super(AdversarialModelWrapper, self).__init__(node_model, gnn_type, num_layers, dataset, patience, device, seed)
 
     # override
     def _setLR(self):
+        """
+            information at the base class ModelWrapper
+        """
         self.lr = 0.005
 
-    def useTrainer(self, data, attack=None):
+    def useTrainer(self, dataset: GraphDataset, attack=None) -> Tuple[Model, str, torch.Tensor]:
+        """
+            information at the base class ModelWrapper
+        """
         return adversarialTrainer(attack=attack)

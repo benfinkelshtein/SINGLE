@@ -1,18 +1,25 @@
-from classes.approach_classes import NodeApproach, EdgeApproach
+from classes.approach_classes import Approach, NodeApproach, EdgeApproach
 from classes.basic_classes import GNN_TYPE
-from attacks import (NodeGNNSAttack, EdgeGNNSAttack, NodeGNNSLinfAttack, NodeGNNSDistanceAttack,
-                     NodeGNNSAdversarialAttack)
+from attacks import (NodeGNNSAttack, EdgeGNNSAttack, NodeGNNSLinfAttack, NodeGNNSAttributeRatioAttack,
+                     NodeGNNSDistanceAttack, NodeGNNSAdversarialAttack, NodeGNNSMultipleAttack)
 
 from enum import Enum, auto
+from typing import List
 
 
 class AttackMode(Enum):
+    """
+        an object for the different attack modes
+    """
     NODE = auto()
     EDGE = auto()
     NODE_LINF = auto()
+    ATTRIBUTES = auto()
 
     DISTANCE = auto()
     ADVERSARIAL = auto()
+
+    MULTIPLE = auto()
 
     @staticmethod
     def from_string(s):
@@ -22,6 +29,13 @@ class AttackMode(Enum):
             raise ValueError()
 
     def getAttack(self):
+        """
+            a get function for the required attack mode
+
+            Returns
+            -------
+            attack_mode: AttackMode
+        """
         if self is AttackMode.NODE:
             return NodeGNNSAttack
         elif self is AttackMode.NODE_LINF:
@@ -32,37 +46,96 @@ class AttackMode(Enum):
             return NodeGNNSDistanceAttack
         elif self is AttackMode.ADVERSARIAL:
             return NodeGNNSAdversarialAttack
+        elif self is AttackMode.MULTIPLE:
+            return NodeGNNSMultipleAttack
+        elif self is AttackMode.ATTRIBUTES:
+            return NodeGNNSAttributeRatioAttack
 
-    def getApproaches(self):
+    def getApproaches(self, robust_gcn, twitter) -> List[Approach]:
+        """
+            gets the approaches for each attack mode
+
+            Parameters
+            ----------
+            robust_gcn: bool - whether the ROBUST_GCN is included in the list of GNNs for the attack
+            twitter: bool - whether dataset is the TWITTER dataset
+
+            Returns
+            -------
+            approaches: List[Approach]
+        """
         if self is AttackMode.NODE:
-            return [NodeApproach.SINGLE, NodeApproach.INDIRECT, NodeApproach.TWO_ATTACKERS, NodeApproach.DIRECT,
-                    NodeApproach.TOPOLOGY, NodeApproach.GRAD_CHOICE, NodeApproach.AGREE]
+            approaches = [NodeApproach.SINGLE, NodeApproach.INDIRECT, NodeApproach.MULTIPLE_ATTACKERS,
+                          NodeApproach.DIRECT, NodeApproach.TOPOLOGY, NodeApproach.GRAD_CHOICE, NodeApproach.AGREE,
+                          NodeApproach.ZERO_FEATURES]
+            if not robust_gcn and not twitter:
+                approaches.append(NodeApproach.INJECTION)
+            return approaches
         elif self is AttackMode.EDGE:
-            return [EdgeApproach.RANDOM, EdgeApproach.GRAD, EdgeApproach.GLOBAL_GRAD]
-        elif self is AttackMode.NODE_LINF or self is AttackMode.DISTANCE or self is AttackMode.ADVERSARIAL:
+            return [EdgeApproach.RANDOM, EdgeApproach.GRAD, EdgeApproach.GLOBAL_GRAD,
+                    EdgeApproach.MULTI_GRAD, EdgeApproach.MULTI_GLOBAL_GRAD]
+        elif self is AttackMode.NODE_LINF or self is AttackMode.ATTRIBUTES or self is AttackMode.DISTANCE or \
+                self is AttackMode.ADVERSARIAL:
             return [NodeApproach.SINGLE]
+        elif self is AttackMode.MULTIPLE:
+            return [NodeApproach.MULTIPLE_ATTACKERS]
 
-    def getGNN_TYPES(self):
-        if self is AttackMode.NODE or self is AttackMode.EDGE or self is AttackMode.NODE_LINF or \
-                self is AttackMode.DISTANCE:
+    def getGNN_TYPES(self) -> List[GNN_TYPE]:
+        """
+            gets the GNN types for each attack mode
+
+            Returns
+            -------
+            gnn_types: List[GNN_TYPE]
+        """
+        if self is AttackMode.NODE or self is AttackMode.EDGE or self is AttackMode.NODE_LINF \
+                or self is AttackMode.ATTRIBUTES or self is AttackMode.DISTANCE or self is AttackMode.MULTIPLE:
             return [GNN_TYPE.GCN, GNN_TYPE.GAT, GNN_TYPE.GIN, GNN_TYPE.SAGE]
         elif self is AttackMode.ADVERSARIAL:
             return [GNN_TYPE.GCN]
 
-    def isNodeModel(self):
+    def isNodeModel(self) -> bool:
+        """
+            whether or not the selected attack mode is node-based
+
+            Returns
+            -------
+            is_node_based: bool
+        """
         if self is AttackMode.EDGE:
             return False
         return True
 
-    def isDistance(self):
+    def isDistance(self) -> bool:
+        """
+            whether or not the selected attack mode is AttackMode.DISTANCE
+
+            Returns
+            -------
+            is_distance: bool
+        """
         if self is AttackMode.DISTANCE:
             return True
         return False
 
-    def isAdversarial(self):
+    def isAdversarial(self) -> bool:
+        """
+            whether or not the selected attack mode is AttackMode.ADVERSARIAL
+
+            Returns
+            -------
+            is_adversarial: bool
+        """
         if self is AttackMode.ADVERSARIAL:
             return True
         return False
 
     def getModeNode(self):
+        """
+            a get function for the AttackMode.Node object
+
+            Returns
+            -------
+            the AttackMode.Node object
+        """
         return AttackMode.NODE

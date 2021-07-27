@@ -27,18 +27,21 @@ mv twitter-dataset/data/* GNNattack/datasets/twitter
 You can choose one of the 5 attacks as detailed in our paper:
 
 1. **SINGLE (NODE)**
-attack will produce a 2d matrix of SINGLE approaches such as (hops, GradChoice, Topology...) as a function of the available nets (GCN, GIN, GAT, SAGE)
+attack will produce a 2d matrix of SINGLE approaches such as (hops, GradChoice, Topology...) as a function of the available nets (GCN, GIN, GAT, SAGE, SGC, Robust GCN)
 
 2. **EDGE**
-attack will produce a 2d matrix of EDGE approaches such as (EdgeGrad, GlobalEdgeGrad, RANDOM) as a function of the available nets (GCN, GIN, GAT, SAGE)
+attack will produce a 2d matrix of EDGE approaches such as (EdgeGrad, MultiEdgeGrad, GlobalEdgeGrad...) as a function of the available nets (GCN, GIN, GAT, SAGE, SGC)
 
 3. **NODE_LINF**
-attack will produce a 2d matrix of `L_inf` values `{0.1-1.1}` as a function of the available nets (GCN, GIN, GAT, SAGE), only for the basic SINGLE approach
+attack will produce a 2d matrix of `L_inf` values `{0.1-1.1}` as a function of the available nets, only for the basic SINGLE approach
 
-4. **DISTANCE**
-attack will produce a 2d matrix of distance from the victim node as a function of the available nets (GCN, GIN, GAT, SAGE), only for the basic SINGLE approach
+4. **ATTRIBUTES**
+attack will produce a 2d matrix of `L_0` values `{0.01-1.0}` as a function of the available nets, only for the basic SINGLE approach
 
-5. **ADVERSARIAL**
+5. **DISTANCE**
+attack will produce a 2d matrix of distance from the victim node as a function of the available nets, only for the basic SINGLE approach
+
+6. **ADVERSARIAL**
 attack will produce a 1d vector of `Ktest` results for `Ktrain=attEpochs`, only for the basic SINGLE approach and for the GCN net
 
 
@@ -60,11 +63,15 @@ The available input arguments are:
 
 * `--l_inf`: `L_inf` value, only for datasets that are represented in tf-idf (and not in many-hot-vec)
 
+* `--l_0`: The limit on the ratio of attributes used in the attack
+
 * `--targeted`: a bool flag that changes the attack to a targeted attack
 
 * `--distance` (ONLY FOR THE DISTANCE ATTACK): the maximum distance
 
 * `--seed`: a seed for reproducability
+
+Note: Every combination of attack mode and GNN is available, except for the combination of Edge attacks+Robust GCN
 
 ## Citation
 If you want to cite this work, please use this bibtex entry:

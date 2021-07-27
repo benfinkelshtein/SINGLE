@@ -1,17 +1,35 @@
 from node_attack.attackSet import attackSet
-from node_attack.attackTrainer import test
+from node_attack.attackTrainerHelpers import test
 from classes.basic_classes import Print
+from classes.approach_classes import Approach
 
+import torch
+import torch_geometric
 import torch.nn.functional as F
 import copy
+from typing import Tuple
 
 
 # a trainer function for our adversarial model
 # the function find harmful attributes
 # and learns to classify them correctly
 def adversarialTrainer(attack):
+    """
+        trains the model adversarial (the model learns to classify correctly harmful feature matrices)
+
+        Parameters
+        ----------
+        attack: oneGNNAttack
+
+        Returns
+        -------
+        model: Model
+        model_log: str
+        test_accuracy: torch.Tensor
+    """
+
     model = attack.model_wrapper.model  # important note: this is a fresh, untrained model!
-    data = attack.dataset.data
+    data = attack.getDataset().data
 
     patience_counter, best_val_accuracy = 0, 0
     adversarial_model_train_epochs = 100
@@ -48,15 +66,41 @@ def adversarialTrainer(attack):
     return attack.model_wrapper.model, model_log, train_results[2]
 
 
-# a function which attacked the model and delivers the harmful attributes
-def getTheMostHarmfulInput(attack, approach):
-    _, attacked_nodes, y_targets = attackSet(attack=attack, approach=approach, print_answer=Print.NO, trainset=True)
+def getTheMostHarmfulInput(attack, approach: Approach) -> Tuple[torch.Tensor]:
+    """
+        attacks the model and extract the attacked feature matrix
+
+        Parameters
+        ----------
+        attack: oneGNNAttack
+        approach: torch_geometric.data.Data
+
+        Returns
+        -------
+        attacked_nodes: torch.Tensor - the victim nodes
+        attacked_x: torch.Tensor - the feature matrices after the attack
+        y_targets: torch.Tensor - the target labels of the attack
+    """
+    attack.print_answer = Print.NO
+    _, attacked_nodes, y_targets = attackSet(attack=attack, approach=approach, trainset=True)
     attacked_x = attack.model_wrapper.model.getInput().clone().detach()
     return attacked_x, attacked_nodes, y_targets
 
 
-# a function which trains the model with both losses - clean and adversarial
-def train(model, optimizer, data, attacked_nodes, attacked_x, adv_scale=1):
+def train(model, optimizer: torch.optim, data: torch_geometric.data.Data, attacked_nodes: torch.Tensor,
+          attacked_x: torch.Tensor, adv_scale: int = 1):
+    """
+        trains the model with both losses - clean and adversarial, for one epoch
+
+        Parameters
+        ----------
+        model: Model
+        optimizer: torch.optim
+        data: torch_geometric.data.Data
+        attacked_nodes: torch.Tensor - the victim nodes
+        attacked_x: torch.Tensor - the feature matrices after the attack
+        adv_scale: int - the lambda scale hyperparameter between the two losses
+    """
     model.train()
     optimizer.zero_grad()
 
@@ -66,3 +110,5 @@ def train(model, optimizer, data, attacked_nodes, attacked_x, adv_scale=1):
 
     loss.backward()
     optimizer.step()
+
+    model.eval()

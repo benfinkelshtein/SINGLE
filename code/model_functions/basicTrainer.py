@@ -1,9 +1,25 @@
 import torch
+import torch_geometric
 import torch.nn.functional as F
 
 
-# a trainer for our basic (non-adversarial, not yet attacked) models
-def basicTrainer(model, optimizer, data, patience):
+def basicTrainer(model, optimizer: torch.optim, data: torch_geometric.data.Data, patience: int):
+    """
+        trains the model according to the required epochs/patience
+
+        Parameters
+        ----------
+        model: Model
+        optimizer: torch.optim
+        data: torch_geometric.data.Data
+        patience:
+
+        Returns
+        -------
+        model: Model
+        model_log: str
+        test_accuracy: torch.Tensor
+    """
     best_val_accuracy = test_accuracy = 0
     model_train_epochs = 200
     log_template = 'Regular Epoch: {:03d}, Train: {:.4f}, Val: {:.4f}, Test: {:.4f}'
@@ -27,16 +43,42 @@ def basicTrainer(model, optimizer, data, patience):
 
 
 # training the current model
-def train(model, optimizer, data):
+def train(model, optimizer: torch.optim, data: torch_geometric.data.Data):
+    """
+        trains the model for one epoch
+
+        Parameters
+        ----------
+        model: Model
+        optimizer: torch.optim
+        data: torch_geometric.data.Data
+    """
     model.train()
     optimizer.zero_grad()
     F.nll_loss(model()[data.train_mask], data.y[data.train_mask]).backward()
     optimizer.step()
 
+    model.eval()
+
 
 # testing the current model
 @torch.no_grad()
-def test(model, data):
+def test(model, data: torch_geometric.data.Data) -> torch.Tensor:
+    """
+        tests the model according to the train/val/test masks
+
+        Parameters
+        ----------
+        model: Model
+        data: torch_geometric.data.Data
+
+        Returns
+        -------
+        accuracies: torch.Tensor - 3d-tensor that includes
+                                    1st-d - the train accuracy
+                                    2nd-d - the val accuracy
+                                    3rd-d - the test accuracy
+    """
     model.eval()
     logits, accuracies = model(), []
     for _, mask in data('train_mask', 'val_mask', 'test_mask'):

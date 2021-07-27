@@ -1,9 +1,17 @@
 import torch
 from torch_geometric.data import Data, InMemoryDataset
 import numpy as np
+import os.path
 
 
-def read_edge_index():
+def read_edge_index() -> np.array:
+    """
+        reads the edges of the dataset
+
+        Returns
+        ----------
+        np_edges: np.array - the requested model
+    """
     with open('./data/users.edges') as f:
         edges_str = f.read().splitlines()
         edge_int = []
@@ -13,11 +21,17 @@ def read_edge_index():
         np_edges = np.array(edge_int)
     return np.transpose(np_edges)
 
+
 map_label_to_index = {'hateful': 2, 'normal': 0, 'other':1}
 
 
 class TwitterDataset(InMemoryDataset):
-    def __init__(self, root_path, transform=None, pre_transform=None, feature_matrix=None, label_matrix=None):
+    """
+        a base class for the Twitter dataset
+
+        more information at torch_geometric.data.InMemoryDataset
+    """
+    def __init__(self, root_path: os.path, transform=None, pre_transform=None, feature_matrix=None, label_matrix=None):
         self.features = feature_matrix
         self.labels = label_matrix
         super(TwitterDataset, self).__init__(root_path, transform, pre_transform)

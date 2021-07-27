@@ -1,4 +1,4 @@
-from node_attack.attackTrainer import attackTrainer
+from node_attack.attackTrainerGeneric import attackTrainer
 from classes.basic_classes import Print
 
 import collections
@@ -7,9 +7,25 @@ import torch
 import copy
 
 
-# a regular BFS algorithm with a k distance stopping rule
-# important note: the BFS doesnt include the root in its neighbours
-def kBFS(root, device, reversed_arr_list, K):
+def kBFS(root: torch.Tensor, device: torch.cuda, reversed_arr_list: torch.Tensor, K: int) -> torch.Tensor:
+    """
+        a regular BFS algorithm with a k distance stopping rule
+        important note: the BFS doesnt include the root in its neighbours
+
+        Parameters
+        ----------
+        root: torch.Tensor
+        device: torch.cuda
+        reversed_arr_list: torch.Tensor - more information at
+                                          dataset_functions.graph_dataset.GraphDataset._setReversedArrayList
+        K: int - the maximal distance
+
+        Returns
+        -------
+        neighbours_and_dist: torch.Tensor - 2d-tensor that includes
+                                            1st-col - the nodes that are in the victim nodes BFS neighborhood
+                                            2nd-col - the distance of said nodes from the victim node
+    """
     neighbours_and_dist = []
 
     visited, queue = set(), collections.deque()
@@ -32,9 +48,23 @@ def kBFS(root, device, reversed_arr_list, K):
     return neighbours_and_dist
 
 
-# our heuristic approach: our of all nodes with distance 1 choose the one with minimal in degree
-# in the case of multiple such nodes, select at random
-def heuristicApproach(reversed_arr_list, neighbours_and_dist, device):
+def heuristicApproach(reversed_arr_list, neighbours_and_dist, device) -> torch.Tensor:
+    """
+        out of all nodes with distance 1 chooses the node with minimal in degree
+        in the case of multiple such nodes, select at random
+
+        Parameters
+        ----------
+        reversed_arr_list: torch.Tensor - more information at
+                                          dataset_functions.graph_dataset.GraphDataset._setReversedArrayList
+        neighbours_and_dist: torch.Tensor - 2d-tensor that includes
+                                            1st-col - the nodes that are in the victim nodes BFS neighborhood
+                                            2nd-col - the distance of said nodes from the victim node
+        device: torch.cuda
+        Returns
+        -------
+        nodes_with_min_in_degree_and_distance_one: torch.Tensor
+    """
     # the in degree of all nodes
     nodes_in_degree = []
     for nodes_leading_to_node_index in reversed_arr_list:
@@ -59,16 +89,39 @@ def heuristicApproach(reversed_arr_list, neighbours_and_dist, device):
 
 # our gradient approach: attack node with the WHOLE BFS neighbourhood for 1 epoch
 # choose the node with the maximal gradient
-def gradientApproach(attack, attacked_node, y_target, node_num, neighbours_and_dist, approach):
+def gradientApproach(attack, attacked_node: torch.Tensor, y_target: torch.Tensor, node_num: int,
+                     neighbours_and_dist: torch.Tensor) -> torch.Tensor:
+    """
+        attacks node with the WHOLE BFS neighbourhood for 1 epoch
+        chooses the node with the maximal gradient
+
+        Parameters
+        ----------
+        attack: oneGNNAttack
+        attacked_node: torch.Tensor -  the victim node
+        y_target: torch.Tensor - the target label of the attack
+        node_num: int - the index of the attacked/victim node (out of the train/val/test-set)
+        neighbours_and_dist: torch.Tensor - 2d-tensor that includes
+                                            1st-col - the nodes that are in the victim nodes BFS neighborhood
+                                            2nd-col - the distance of said nodes from the victim node
+
+        Returns
+        -------
+        malicious_node: torch.Tensor - the chosen attacker/malicious node
+    """
     device = attack.device
-    gradient_model = copy.deepcopy(attack.model_wrapper.model)
-    x0 = attack.dataset.data.x.clone().detach()
+    gradient_attack = copy.deepcopy(attack)
+    x0 = attack.getDataset().data.x.clone().detach()
     malicious_nodes = neighbours_and_dist[:, 0]
 
     # attack node with the whole bfs clique - for 1 epoch!
-    attackTrainer(attack=attack, approach=approach, model=gradient_model, print_answer=Print.NO,
-                  attacked_nodes=attacked_node, y_targets=y_target, malicious_nodes=malicious_nodes, node_num=node_num,
-                  attack_epochs=1, lr=1e-2)
+    # gradient_attack.l_0 = 1
+    gradient_attack.attack_epochs = 1
+    gradient_attack.lr /= 10
+    gradient_attack.print_answer = Print.NO
+    attackTrainer(attack=gradient_attack, attacked_nodes=attacked_node, y_targets=y_target,
+                  malicious_nodes=malicious_nodes, node_num=node_num, discrete_stop_after_1iter=True)
+    gradient_model = gradient_attack.model_wrapper.model
     # choose the largest norm-linf attribute
     nodes_norm_linf, _ = torch.max(torch.abs(gradient_model.getInput() - x0), dim=1)
     nodes_norm_linf = nodes_norm_linf.to(device)
