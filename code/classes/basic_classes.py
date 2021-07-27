@@ -75,7 +75,7 @@ class DataSet(Enum):
         if self.get_type() is DatasetType.DISCRETE:
             return 0.01
         if self is DataSet.PUBMED:
-            return 0.1
+            return 0.05
         if self is DataSet.TWITTER:
             return 0.05
 
