@@ -341,14 +341,14 @@ class ModelWrapper(object):
         folder_name = osp.join(getGitPath(), 'models')
         if attack is None:
             folder_name = osp.join(folder_name, 'basic_models')
-            targeted, attack_epochs = None, None
+            targeted, continuous_epochs = None, None
         else:
             folder_name = osp.join(folder_name, 'adversarial_models')
-            targeted, attack_epochs = attack.targeted, attack.attack_epochs
+            targeted, continuous_epochs = attack.targeted, attack.continuous_epochs
 
         file_name = fileNamer(node_model=self.node_model, dataset_name=dataset.name, model_name=model.name,
                               num_layers=model.num_layers, patience=self.patience, seed=self.seed, targeted=targeted,
-                              attack_epochs=attack_epochs, end='.pt')
+                              continuous_epochs=continuous_epochs, end='.pt')
         model_path = osp.join(folder_name, file_name)
 
         # load model and optimizer

@@ -1,7 +1,7 @@
 # a helper function which creates a constant format of file names
 def fileNamer(node_model: str = None, dataset_name: str = None, model_name: str = None, l_inf: float = None,
               l_0: float = None, num_layers: int = None,
-              seed: int = None, targeted: bool = None, attack_epochs: int = None, patience: int = None,
+              seed: int = None, targeted: bool = None, continuous_epochs: int = None, patience: int = None,
               start: str = None, end: str = None) -> str:
     """
         creates the generic name of the output file
@@ -16,7 +16,7 @@ def fileNamer(node_model: str = None, dataset_name: str = None, model_name: str 
         num_layers: int
         seed: int
         targeted: bool
-        attack_epochs: int
+        continuous_epochs: int
         patience: int
         start: str - prefix for the file name
         end: str - suffix for the file name
@@ -42,11 +42,11 @@ def fileNamer(node_model: str = None, dataset_name: str = None, model_name: str 
         if not targeted:
             targeted_attack_str += 'un'
         targeted = targeted_attack_str + 'targeted'
-    attack_epochs = str(attack_epochs) + 'K' if attack_epochs is not None else attack_epochs
+    continuous_epochs = str(continuous_epochs) + 'K' if continuous_epochs is not None else continuous_epochs
     patience = 'patience' + str(patience) if patience is not None else patience
 
     for input in [start, node_model, dataset_name, model_name, num_layers, seed, l_inf, l_0, targeted,
-                  attack_epochs, patience]:
+                  continuous_epochs, patience]:
         if input is not None:
             file_name += '_' + input
 

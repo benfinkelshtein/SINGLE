@@ -97,8 +97,6 @@ class NodeApproach(Approach):
                                                                             attacked_node=attacked_node)
             attack.setDataset(dataset=dataset)
         elif self is NodeApproach.MULTIPLE_ATTACKERS:
-            if attack.num_of_attackers == 1:
-                attack.setNumOfAttackers(num_of_attackers=2)
             if BFS_size < attack.num_of_attackers:
                 return None, attack
             malicious_indices = np.random.choice(BFS_size, attack.num_of_attackers, replace=False)

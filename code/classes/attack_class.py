@@ -1,6 +1,6 @@
 from classes.approach_classes import Approach, NodeApproach, EdgeApproach
 from classes.basic_classes import GNN_TYPE
-from attacks import (NodeGNNSAttack, EdgeGNNSAttack, NodeGNNSLinfAttack, NodeGNNSAttributeRatioAttack,
+from attacks import (NodeGNNSAttack, EdgeGNNSAttack, NodeGNNSLinfAttack, NodeGNNSL0Attack,
                      NodeGNNSDistanceAttack, NodeGNNSAdversarialAttack, NodeGNNSMultipleAttack)
 
 from enum import Enum, auto
@@ -14,7 +14,7 @@ class AttackMode(Enum):
     NODE = auto()
     EDGE = auto()
     NODE_LINF = auto()
-    ATTRIBUTES = auto()
+    NODE_L0 = auto()
 
     DISTANCE = auto()
     ADVERSARIAL = auto()
@@ -48,8 +48,8 @@ class AttackMode(Enum):
             return NodeGNNSAdversarialAttack
         elif self is AttackMode.MULTIPLE:
             return NodeGNNSMultipleAttack
-        elif self is AttackMode.ATTRIBUTES:
-            return NodeGNNSAttributeRatioAttack
+        elif self is AttackMode.NODE_L0:
+            return NodeGNNSL0Attack
 
     def getApproaches(self, robust_gcn, twitter) -> List[Approach]:
         """
@@ -64,9 +64,9 @@ class AttackMode(Enum):
             -------
             approaches: List[Approach]
         """
-        if self is AttackMode.NODE:
+        if self is AttackMode.NODE or self is AttackMode.ADVERSARIAL:
             approaches = [NodeApproach.SINGLE, NodeApproach.INDIRECT, NodeApproach.MULTIPLE_ATTACKERS,
-                          NodeApproach.DIRECT, NodeApproach.TOPOLOGY, NodeApproach.GRAD_CHOICE, NodeApproach.AGREE,
+                          NodeApproach.DIRECT, NodeApproach.TOPOLOGY, NodeApproach.GRAD_CHOICE,
                           NodeApproach.ZERO_FEATURES]
             if not robust_gcn and not twitter:
                 approaches.append(NodeApproach.INJECTION)
@@ -74,8 +74,7 @@ class AttackMode(Enum):
         elif self is AttackMode.EDGE:
             return [EdgeApproach.RANDOM, EdgeApproach.GRAD, EdgeApproach.GLOBAL_GRAD,
                     EdgeApproach.MULTI_GRAD, EdgeApproach.MULTI_GLOBAL_GRAD]
-        elif self is AttackMode.NODE_LINF or self is AttackMode.ATTRIBUTES or self is AttackMode.DISTANCE or \
-                self is AttackMode.ADVERSARIAL:
+        elif self is AttackMode.NODE_LINF or self is AttackMode.NODE_L0 or self is AttackMode.DISTANCE:
             return [NodeApproach.SINGLE]
         elif self is AttackMode.MULTIPLE:
             return [NodeApproach.MULTIPLE_ATTACKERS]
@@ -89,7 +88,7 @@ class AttackMode(Enum):
             gnn_types: List[GNN_TYPE]
         """
         if self is AttackMode.NODE or self is AttackMode.EDGE or self is AttackMode.NODE_LINF \
-                or self is AttackMode.ATTRIBUTES or self is AttackMode.DISTANCE or self is AttackMode.MULTIPLE:
+                or self is AttackMode.NODE_L0 or self is AttackMode.DISTANCE or self is AttackMode.MULTIPLE:
             return [GNN_TYPE.GCN, GNN_TYPE.GAT, GNN_TYPE.GIN, GNN_TYPE.SAGE]
         elif self is AttackMode.ADVERSARIAL:
             return [GNN_TYPE.GCN]

@@ -29,7 +29,7 @@ def attackTrainerContinuous(attack, attacked_nodes: torch.Tensor, y_targets: tor
     """
     # initialize
     model = attack.model_wrapper.model
-    attack_epochs = attack.attack_epochs
+    continuous_epochs = attack.continuous_epochs
     lr = attack.lr
     print_answer = attack.print_answer
     dataset = attack.getDataset()
@@ -48,15 +48,14 @@ def attackTrainerContinuous(attack, attacked_nodes: torch.Tensor, y_targets: tor
 
     # find best_attributes
     model0 = copy.deepcopy(model)
-    prev_changed_attributes = 0
-    for epoch in range(0, attack_epochs):
+    for epoch in range(0, continuous_epochs):
         # train
         train(model=model, targeted=attack.targeted, attacked_nodes=attacked_nodes, y_targets=y_targets,
               optimizer=optimizer)
 
         # test correctness
         changed_attributes = (model.getInput() != model0.getInput())[malicious_nodes].sum().item()
-        test_discrete(model=model, model0=model0, malicious_nodes=malicious_nodes,
+        test_discrete(model=model, model0=model0, malicious_nodes=malicious_nodes, attacked_nodes=attacked_nodes,
                       changed_attributes=changed_attributes, max_attributes=max_attributes)
 
         # test
@@ -74,8 +73,8 @@ def attackTrainerContinuous(attack, attacked_nodes: torch.Tensor, y_targets: tor
             # test correctness
             changed_attributes = (embeded_model.getInput() != model0.getInput())[malicious_nodes].sum().item()
             test_continuous(model=embeded_model, model0=model0, malicious_nodes=malicious_nodes,
-                            changed_attributes=changed_attributes, max_attributes=l_0_max_attributes,
-                            l_inf=attack.l_inf)
+                            attacked_nodes=attacked_nodes, changed_attributes=changed_attributes,
+                            max_attributes=l_0_max_attributes, l_inf=attack.l_inf)
             # test
             results = test(data=data, model=embeded_model, targeted=attack.targeted, attacked_nodes=attacked_nodes,
                            y_targets=y_targets)
@@ -86,11 +85,7 @@ def attackTrainerContinuous(attack, attacked_nodes: torch.Tensor, y_targets: tor
         # prints
         if print_answer is Print.YES:
             print(log_template.format(node_num, epoch + 1, *results[:-1]), flush=True, end='')
-        if changed_attributes == prev_changed_attributes:
-            break
-        prev_changed_attributes = changed_attributes
-
-        if epoch != attack_epochs - 1 and print_answer is not Print.NO:
+        if epoch != continuous_epochs - 1 and print_answer is not Print.NO:
             print()
 
     if print_answer is Print.YES:
@@ -102,4 +97,10 @@ def attackTrainerContinuous(attack, attacked_nodes: torch.Tensor, y_targets: tor
         print(final_log + '\n', flush=True)
     if not results[3]:
         changed_attributes = max_attributes
+
+    if attack.mode.isAdversarial():
+        if results[3]:
+            attack.setModel(embeded_model)
+        else:
+            attack.setModel(model0)
     return torch.tensor([[results[3], changed_attributes]]).type(torch.long)

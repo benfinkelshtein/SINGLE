@@ -45,9 +45,6 @@ def attackVictim(attack, approach: Approach, attacked_node: torch.Tensor, y_targ
                                                                        neighbours_and_dist.shape[0] + 1)
     else:
         attack_log = 'Attack: {:03d}, Node: {} is a solo node'.format(node_num, attacked_node.item())
-    # in adversarial mode add #Epoch
-    if attack.mode.isAdversarial():
-        attack_log = 'Adv Epoch: {:03d}, '.format(attack.idx) + attack_log
 
     # special cases of solo node and duo node for double
     BFS_size = neighbours_and_dist.shape[0]
@@ -58,14 +55,15 @@ def attackVictim(attack, approach: Approach, attacked_node: torch.Tensor, y_targ
 
     if print_answer is Print.YES:
         print(attack_log, end='', flush=True)
-        if approach is not NodeApproach.MULTIPLE_ATTACKERS:
+        if approach is not NodeApproach.MULTIPLE_ATTACKERS and print_answer is Print.YES:
             print()
     malicious_node, attack = approach.getMaliciousNode(attack=attack, attacked_node=attacked_node, y_target=y_target,
                                                        node_num=node_num, neighbours_and_dist=neighbours_and_dist,
                                                        BFS_size=BFS_size)
     # calculates the malicious node for the irregular approaches
     if approach is NodeApproach.AGREE:
-        print()
+        if print_answer is Print.YES:
+            print()
         malicious_node_heuristic = heuristicApproach(reversed_arr_list=dataset.reversed_arr_list,
                                                      neighbours_and_dist=neighbours_and_dist,
                                                      device=attack.device)
@@ -88,12 +86,12 @@ def attackVictim(attack, approach: Approach, attacked_node: torch.Tensor, y_targ
         # test
         results = test(data=data, model=zero_model, targeted=attack.targeted,
                        attacked_nodes=attacked_node, y_targets=y_target)
-
-        log_template = createLogTemplate(attack=attack, dataset=dataset) + ', Attack Success: {}\n'
-        if dataset.type is DatasetType.DISCRETE:
-            print(log_template.format(node_num, 1, changed_attributes, *results), flush=True)
-        if dataset.type is DatasetType.CONTINUOUS:
-            print(log_template.format(node_num, 1, *results), flush=True)
+        if print_answer is Print.YES:
+            log_template = createLogTemplate(attack=attack, dataset=dataset) + ', Attack Success: {}\n'
+            if dataset.type is DatasetType.DISCRETE:
+                print(log_template.format(node_num, 1, changed_attributes, *results), flush=True)
+            if dataset.type is DatasetType.CONTINUOUS:
+                print(log_template.format(node_num, 1, *results), flush=True)
         attack_results = torch.tensor([[results[3], changed_attributes]])
         return attack_results
 
@@ -111,7 +109,8 @@ def attackVictim(attack, approach: Approach, attacked_node: torch.Tensor, y_targ
                                                        attacked_node=attacked_node, y_target=y_target,
                                                        print_answer=Print.NO, attack_num=node_num + 1)
         if not classified_to_target:
-            print("misclassified right after injection!\n", flush=True)
+            if print_answer is Print.YES:
+                print("misclassified right after injection!\n", flush=True)
             attack.model_wrapper.model.removeInjectedNode(attack=attack)
             return torch.tensor([[1, 0]])
 
@@ -178,7 +177,5 @@ def checkNodeClassification(attack, dataset: torch_geometric.data.Data, attacked
     if not classified_to_target and print_answer is Print.YES:
         attack_log = 'Attack: {:03d}, Node: {}, Misclassified already!\n' \
             .format(attack_num, attacked_node.item())
-        if attack.mode.isAdversarial():
-            attack_log = 'Adv Epoch: {:03d}, '.format(attack.idx) + attack_log
         print(attack_log, flush=True)
     return classified_to_target

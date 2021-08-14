@@ -150,10 +150,18 @@ def model_res2targets_acc(targeted: bool, y_targets: torch.Tensor, model_res: to
     pred_val, pred = model_res.max(1)
 
     # edge case where more than one of the classes has the same prob
-    max_pred = (model_res == pred_val)
-    if max_pred.sum() > 1 and max_pred[range(0, y_targets.shape[0]), y_targets]:
-        return True
-
+    diff_prob_mat = (model_res.T - pred_val).T
+    same_prob_vec = (diff_prob_mat == 0).sum(1)
+    edge_case_vec = torch.logical_and(same_prob_vec > 1,
+                                      diff_prob_mat[range(0, y_targets.shape[0]), y_targets] == 0)
+    if targeted:
+        pred[edge_case_vec] = y_targets[edge_case_vec]
+    else:
+        for node_idx in range(model_res.shape[0]):
+            for class_idx in range(model_res.shape[1]):
+                if model_res[node_idx, class_idx] == pred_val[node_idx] and class_idx != y_targets[node_idx]:
+                    pred[node_idx] = class_idx
+    # end of edge case
 
     if y_targets.shape[0] == 1:
         y_targets_acc = (pred == y_targets)

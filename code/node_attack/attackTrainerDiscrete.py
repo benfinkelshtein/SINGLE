@@ -72,7 +72,7 @@ def attackTrainerDiscrete(attack, attacked_nodes: torch.Tensor, y_targets: torch
         changed_attributes = limited_max_attributes - num_attributes_left.sum().item()
 
         # test correctness
-        test_discrete(model=model, model0=model0, malicious_nodes=malicious_nodes,
+        test_discrete(model=model, model0=model0, malicious_nodes=malicious_nodes, attacked_nodes=attacked_nodes,
                       changed_attributes=changed_attributes, max_attributes=limited_max_attributes)
 
         # test

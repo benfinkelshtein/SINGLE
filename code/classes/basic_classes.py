@@ -61,8 +61,10 @@ class DataSet(Enum):
         """
         if self.get_type() is DatasetType.DISCRETE:
             return 1
-        if self is DataSet.PUBMED or self is DataSet.TWITTER:
-            return 0.1
+        if self is DataSet.PUBMED:
+            return 0.04
+        if self is DataSet.TWITTER:
+            return 0.001
 
     def get_l_0(self) -> float:
         """

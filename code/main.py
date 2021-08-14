@@ -14,11 +14,13 @@ if __name__ == '__main__':
 
     parser.add_argument('--singleGNN', dest="singleGNN", type=GNN_TYPE.from_string, choices=list(GNN_TYPE),
                         required=False)
+
     parser.add_argument("--num_layers", dest="num_layers", default=2, type=int, required=False)
     parser.add_argument("--patience", dest="patience", default=20, type=int, required=False)
 
-    parser.add_argument("--attEpochs", dest="attEpochs", default=None, type=int, required=False)
-    parser.add_argument("--lr", dest="lr", type=float, default=0.1, required=False)
+    parser.add_argument("--continuous_epochs", dest="continuous_epochs", default=20, type=int, required=False)
+    parser.add_argument("--lr", dest="lr", type=float, default=0.005, required=False)
+
     parser.add_argument("--l_inf", dest="l_inf", type=float, default=None, required=False)
     parser.add_argument("--l_0", dest="l_0", type=float, default=None, required=False)
     parser.add_argument('--targeted', dest="targeted", action='store_true', required=False)

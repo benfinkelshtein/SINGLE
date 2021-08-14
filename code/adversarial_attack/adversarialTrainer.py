@@ -1,7 +1,7 @@
 from node_attack.attackSet import attackSet
 from node_attack.attackTrainerHelpers import test
 from classes.basic_classes import Print
-from classes.approach_classes import Approach
+from classes.approach_classes import Approach, NodeApproach
 
 import torch
 import torch_geometric
@@ -32,7 +32,7 @@ def adversarialTrainer(attack):
     data = attack.getDataset().data
 
     patience_counter, best_val_accuracy = 0, 0
-    adversarial_model_train_epochs = 100
+    adversarial_model_train_epochs = 200
     log_template = 'Adversarial Model - Epoch: {:03d}, Train: {:.4f}, Val: {:.4f}, Test: {:.4f}, Attack: {:.4f}'
 
     model.attack = True
@@ -41,7 +41,7 @@ def adversarialTrainer(attack):
         tmp_attack = copy.deepcopy(attack)
         tmp_attack.setIdx(epoch + 1)
         attacked_x, attacked_nodes, y_targets = \
-            getTheMostHarmfulInput(attack=tmp_attack, approach=tmp_attack.approach)
+            getTheMostHarmfulInput(attack=tmp_attack, approach=NodeApproach.TOPOLOGY)
 
         train(model=attack.model_wrapper.model, optimizer=attack.model_wrapper.optimizer, data=data,
               attacked_nodes=attacked_nodes, attacked_x=attacked_x)

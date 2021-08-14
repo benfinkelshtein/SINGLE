@@ -1,5 +1,5 @@
 from node_attack.attackTrainerGeneric import attackTrainer
-from classes.basic_classes import Print
+from classes.basic_classes import Print, DatasetType
 
 import collections
 import numpy as np
@@ -116,7 +116,8 @@ def gradientApproach(attack, attacked_node: torch.Tensor, y_target: torch.Tensor
 
     # attack node with the whole bfs clique - for 1 epoch!
     # gradient_attack.l_0 = 1
-    gradient_attack.attack_epochs = 1
+    if attack.dataset_type is DatasetType.CONTINUOUS:
+        gradient_attack.continuous_epochs = 1
     gradient_attack.lr /= 10
     gradient_attack.print_answer = Print.NO
     attackTrainer(attack=gradient_attack, attacked_nodes=attacked_node, y_targets=y_target,

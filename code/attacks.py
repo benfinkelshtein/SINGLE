@@ -35,8 +35,10 @@ class oneGNNAttack(object):
         seed = args.seed
 
         self.mode = args.attMode
+        self.dataset_name = args.dataset
         dataset = GraphDataset(args.dataset, device)
         self.__dataset = dataset
+        self.dataset_type = args.dataset.get_type()
 
         self.singleGNN = args.singleGNN
         if args.singleGNN is None:
@@ -47,25 +49,18 @@ class oneGNNAttack(object):
         self.num_layers = args.num_layers if args.num_layers is not None else 2
         self.patience = args.patience
 
-        if args.attEpochs is None:
-            if dataset.type is DatasetType.CONTINUOUS:
-                self.attack_epochs = 20
-            elif dataset.type is DatasetType.DISCRETE:
-                self.attack_epochs = 100
-        else:
-            self.attack_epochs = args.attEpochs
-
+        if dataset.type is DatasetType.CONTINUOUS:
+            self.continuous_epochs = args.continuous_epochs
         self.lr = args.lr
 
         if args.l_inf is None:
             args.l_inf = args.dataset.get_l_inf()
         self.l_inf = args.l_inf
-
         if args.l_0 is None:
             args.l_0 = args.dataset.get_l_0()
         self.l_0 = args.l_0
-
         self.targeted = args.targeted
+
         self.max_distance = args.distance
 
         torch.manual_seed(seed)
@@ -204,11 +199,13 @@ class oneGNNAttack(object):
         if self.singleGNN is None:
             self.file_name = fileNamer(dataset_name=dataset.name, l_inf=args.l_inf, l_0=args.l_0,
                                        num_layers=args.num_layers, seed=args.seed, targeted=args.targeted,
-                                       attack_epochs=args.attEpochs, start=self.start_to_file, end=self.end_to_file)
+                                       continuous_epochs=args.continuous_epochs, start=self.start_to_file,
+                                       end=self.end_to_file)
         else:
             self.file_name = fileNamer(dataset_name=dataset.name, model_name=args.singleGNN.string(), l_inf=args.l_inf,
                                        l_0=args.l_0, num_layers=args.num_layers, seed=args.seed, targeted=args.targeted,
-                                       attack_epochs=args.attEpochs, start=self.start_to_file, end=self.end_to_file)
+                                       continuous_epochs=args.continuous_epochs, start=self.start_to_file,
+                                       end=self.end_to_file)
 
     def extendLog(self, log_start: str, log_end: str) -> str:
         """
@@ -223,9 +220,7 @@ class oneGNNAttack(object):
             -------
             log: str - output log format
         """
-        if self.mode.isAdversarial():
-            log = 'Adv Epoch: {:02d}, '.format(self.idx) + log_start + log_end
-        elif self.mode.isDistance():
+        if self.mode.isDistance():
             log = log_start + ' Distance: {:02d}, '.format(self.current_distance) + log_end
         else:
             log = log_start + log_end
@@ -353,7 +348,7 @@ class NodeGNNSLinfAttack(NodeGNNSAttack):
     """
     def __init__(self, args: ArgumentParser):
         super(NodeGNNSLinfAttack, self).__init__(args=args, start_to_file='NodeLinfAttack', print_answer=Print.YES)
-        self.l_infs = [0.02, 0.05, 0.07, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+        self.l_inf_list = [0.01, 0.02, 0.04, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
         self.checkL_infFlag(self.getDataset())
 
     # a must-create
@@ -362,7 +357,7 @@ class NodeGNNSLinfAttack(NodeGNNSAttack):
             information at the generic base class oneGNNSAttack
         """
         gnns = GNN_TYPE.convertGNN_TYPEListToStringList(self.gnn_types)
-        l_infs_string = [str(l_inf) for l_inf in self.l_infs]
+        l_infs_string = [str(l_inf) for l_inf in self.l_inf_list]
         header = [''] + l_infs_string
         defence_df = pd.DataFrame(defence.to('cpu').numpy())
         defence_df.insert(0, " ", gnns)
@@ -384,9 +379,9 @@ class NodeGNNSLinfAttack(NodeGNNSAttack):
         """
             executes the requested attack for the requested l_inf values on a specific gnn_type
         """
-        defence = torch.zeros(len(self.l_infs)).to(self.device)
-        attributes = torch.zeros(len(self.l_infs)).to(self.device)
-        for l_inf_idx, l_inf in enumerate(self.l_infs):
+        defence = torch.zeros(len(self.l_inf_list)).to(self.device)
+        attributes = torch.zeros(len(self.l_inf_list)).to(self.device)
+        for l_inf_idx, l_inf in enumerate(self.l_inf_list):
             self.setLinf(l_inf)
             tmp_defence, tmp_attributes = self.attackPerApproachWrapper(approach=self.approaches[0])
             defence[l_inf_idx] = tmp_defence
@@ -401,11 +396,12 @@ class NodeGNNSLinfAttack(NodeGNNSAttack):
         if self.singleGNN is None:
             self.file_name = fileNamer(dataset_name=dataset.name, l_0=args.l_0,
                                        num_layers=args.num_layers, seed=args.seed, targeted=args.targeted,
-                                       attack_epochs=args.attEpochs, start=self.start_to_file, end=self.end_to_file)
+                                       continuous_epochs=args.continuous_epochs, start=self.start_to_file,
+                                       end=self.end_to_file)
         else:
             self.file_name = fileNamer(dataset_name=dataset.name, model_name=args.singleGNN.string(),
                                        l_0=args.l_0, num_layers=args.num_layers,
-                                       seed=args.seed, targeted=args.targeted, attack_epochs=args.attEpochs,
+                                       seed=args.seed, targeted=args.targeted, continuous_epochs=args.continuous_epochs,
                                        start=self.start_to_file, end=self.end_to_file)
 
     # creating
@@ -420,7 +416,7 @@ class NodeGNNSLinfAttack(NodeGNNSAttack):
         self.l_inf = l_inf
 
 
-class NodeGNNSAttributeRatioAttack(NodeGNNSAttack):
+class NodeGNNSL0Attack(NodeGNNSAttack):
     """
         a Node-based-attack class that tests different allowed attribute ratios
 
@@ -429,10 +425,8 @@ class NodeGNNSAttributeRatioAttack(NodeGNNSAttack):
         args: ArgumentParser - command line inputs
     """
     def __init__(self, args: ArgumentParser):
-        super(NodeGNNSAttributeRatioAttack, self).__init__(args=args, start_to_file='NodeAttributeRatioAttack',
-                                                           print_answer=Print.YES)
-        self.l_0_list = np.arange(0.01, 1.1, 0.01).tolist()
-        self.checkL_0Flag(self.getDataset())
+        super(NodeGNNSL0Attack, self).__init__(args=args, start_to_file='NodeL0Attack',
+                                               print_answer=Print.YES)
 
     # a must-create
     def saveResults(self, defence: torch.Tensor, attributes: torch.Tensor):
@@ -447,30 +441,59 @@ class NodeGNNSAttributeRatioAttack(NodeGNNSAttack):
         defence_df.to_csv('Def_' + self.file_name, float_format='%.3f', header=header, index=False, na_rep='')
 
     # overriding
-    def checkL_0Flag(self, dataset: GraphDataset):
-        """
-            Validates that the dataset is not discrete in an L_inf based attack
-
-            Parameters
-            ----------
-            dataset: GraphDataset
-        """
-        if dataset.type is DatasetType.CONTINUOUS:
-            exit("L_0 attack isn't suitable for continuous datasets")
-
     def attackPerGNN(self) -> Tuple[torch.Tensor]:
         """
             executes the requested attack for the requested attribute ratios on a specific gnn_type
+        """
+        if self.dataset_name.get_type() is DatasetType.CONTINUOUS:
+            self.l_0_list = np.arange(0.05, 1.05, 0.05).tolist()
+            return self.attackPerGNNContinuous()
+        if self.dataset_name.get_type() is DatasetType.DISCRETE:
+            self.l_0_list = np.arange(0.01, 1.01, 0.01).tolist()
+            return self.attackPerGNNDiscrete()
+
+    def setFileName(self, dataset: GraphDataset, args: ArgumentParser):
+        """
+            information at the generic base class oneGNNSAttack
+        """
+        if self.singleGNN is None:
+            self.file_name = fileNamer(dataset_name=dataset.name, l_inf=args.l_inf, num_layers=args.num_layers,
+                                       seed=args.seed, targeted=args.targeted, continuous_epochs=args.continuous_epochs,
+                                       start=self.start_to_file, end=self.end_to_file)
+        else:
+            self.file_name = fileNamer(dataset_name=dataset.name, model_name=args.singleGNN.string(), l_inf=args.l_inf,
+                                       num_layers=args.num_layers, seed=args.seed, targeted=args.targeted,
+                                       continuous_epochs=args.continuous_epochs, start=self.start_to_file,
+                                       end=self.end_to_file)
+
+    # creating
+    def attackPerGNNContinuous(self) -> Tuple[torch.Tensor]:
+        """
+            attackPerGNN for CONTINUOUS datasets
+        """
+        defence = torch.zeros(len(self.l_0_list)).to(self.device)
+        attributes = torch.zeros(len(self.l_0_list)).to(self.device)
+        for l_0_idx, l_0 in enumerate(self.l_0_list):
+            self.setL0(l_0)
+            tmp_defence, tmp_attributes = self.attackPerApproachWrapper(approach=self.approaches[0])
+            defence[l_0_idx] = tmp_defence
+            attributes[l_0_idx] = tmp_attributes
+
+        return defence.unsqueeze(0), attributes.unsqueeze(0)
+
+    def attackPerGNNDiscrete(self) -> Tuple[torch.Tensor]:
+        """
+            attackPerGNN for DISCRETE datasets
         """
         max_attributes = self.getDataset().data.x.shape[1] * self.num_of_attackers
         defence = torch.zeros(len(self.l_0_list)).to(self.device)
         attributes = torch.zeros(len(self.l_0_list)).to(self.device)
 
-        self.setAttributeRatio(1.0)
+        self.setL0(1.0)
         results, _, _ = attackSet(self, approach=self.approaches[0], trainset=False)
         results = results.type(torch.FloatTensor)
         for l_0_idx, l_0 in enumerate(self.l_0_list):
-            self.setAttributeRatio(l_0)
+            self.setL0(l_0)
             attribute_mask = (results[:, 1] <= l_0 * max_attributes)
             mask = torch.logical_and(attribute_mask, results[:, 0])
 
@@ -479,21 +502,7 @@ class NodeGNNSAttributeRatioAttack(NodeGNNSAttack):
 
         return defence.unsqueeze(0), attributes.unsqueeze(0)
 
-    def setFileName(self, dataset: GraphDataset, args: ArgumentParser):
-        """
-            information at the generic base class oneGNNSAttack
-        """
-        if self.singleGNN is None:
-            self.file_name = fileNamer(dataset_name=dataset.name, l_inf=args.l_inf, num_layers=args.num_layers,
-                                       seed=args.seed, targeted=args.targeted, attack_epochs=args.attEpochs,
-                                       start=self.start_to_file, end=self.end_to_file)
-        else:
-            self.file_name = fileNamer(dataset_name=dataset.name, model_name=args.singleGNN.string(), l_inf=args.l_inf,
-                                       num_layers=args.num_layers, seed=args.seed, targeted=args.targeted,
-                                       attack_epochs=args.attEpochs, start=self.start_to_file, end=self.end_to_file)
-
-    # creating
-    def setAttributeRatio(self, l_0: float):
+    def setL0(self, l_0: float):
         """
             sets the l_0
 
@@ -578,42 +587,8 @@ class NodeGNNSAdversarialAttack(NodeGNNSAttack):
     def __init__(self, args: ArgumentParser):
         super(NodeGNNSAdversarialAttack, self).__init__(args, start_to_file='NodeAdversarialAttack',
                                                         print_answer=Print.NO)
-        self.Ktrain = self.attack_epochs
-        self.Ktests = [1] + list(range(5, 30, 5))
-        self.approach = self.approaches[0]
-
-    # a must-create / overriding Node
-    def saveResults(self, results: torch.Tensor):
-        """
-            information at the generic base class oneGNNSAttack
-        """
-        test_string = [str(k) for k in self.Ktests]
-        header = ['', 'clean'] + test_string
-        defence_df = pd.DataFrame(results.to('cpu').numpy())
-        defence_df.insert(0, " ", str(self.Ktrain))
-        defence_df.to_csv(self.file_name, float_format='%.3f', header=header, index=False, na_rep='')
 
     # overriding
-    def run(self):
-        """
-            executes the requested attack for all Ktests and Ktrains
-            (on a single gnn_type and a single approach)
-        """
-        self.setModelWrapper(gnn_type=self.gnn_types[0])
-        tmp_mode = self.mode
-        self.mode = self.mode.getModeNode()
-
-        results = torch.zeros(len(self.Ktests) + 1).to(self.device)
-        for idx, Ktest in enumerate(self.Ktests):
-            print('######################## Attacking Adversarial Model with Ktrain: {:02d},'.format(self.Ktrain) +
-                  ' Ktest: {:02d} ########################'.format(Ktest), flush=True)
-            tmp_result = self.attackOneApproachAndSetAttackEpochs(approach=self.approach, Ktest=Ktest)
-            results[idx + 1] = tmp_result
-
-        results[0] = self.model_wrapper.clean
-        self.mode = tmp_mode
-        self.saveResults(results.unsqueeze(0))
-
     def setModelWrapper(self, gnn_type: GNN_TYPE):
         """
             Sets a ModelWrapper object adversarially trained, according to the requested Ktrain
@@ -624,49 +599,12 @@ class NodeGNNSAdversarialAttack(NodeGNNSAttack):
                                  more information at classes.basic_classes.GNN_TYPE
         """
         dataset = self.getDataset()
-        if self.Ktrain != 0:
-            self.model_wrapper = AdversarialModelWrapper(node_model=True, gnn_type=gnn_type, num_layers=self.num_layers,
-                                                         dataset=dataset, patience=self.patience, device=self.device,
-                                                         seed=self.seed)
-        else:
-            self.model_wrapper = ModelWrapper(node_model=True, gnn_type=gnn_type, num_layers=self.num_layers,
-                                              dataset=dataset, patience=self.patience, device=self.device,
-                                              seed=self.seed)
-        printAttackHeader(attack=self, approach=self.approach)
-        print('######################## Creating/Loading an Adversarial Model with Ktrain: {:02d}'.format(self.Ktrain) +
-              ' ########################', flush=True)
+        self.model_wrapper = AdversarialModelWrapper(node_model=True, gnn_type=gnn_type, num_layers=self.num_layers,
+                                                     dataset=dataset, patience=self.patience, device=self.device,
+                                                     seed=self.seed)
+        print(f'######################## LOADING Adversarial MODEL {self.model_wrapper.model.name}\
+        ########################')
         self.model_wrapper.train(dataset=dataset, attack=self)
-
-    # creating
-    def attackOneApproachAndSetAttackEpochs(self, approach: Approach, Ktest: int) -> Tuple[torch.Tensor]:
-        """
-            sets the requested Ktest before
-            executing the requested attack for a specific approach on a specific gnn_type
-
-            Parameters
-            ----------
-            approach: Approach - the type of attack approach
-                                 more information at classes.approach_classes.Approach
-            Ktest: int - number of attack epochs for the test
-
-            Returns
-            -------
-            defence: torch.Tensor - the defence %
-        """
-        self.setAttackEpochs(Ktest)
-        results, _, _ = attackSet(self, approach=approach, trainset=False)
-        mean_results = getDefenceResultsMean(attack=self, approach=approach, attack_results=results)
-        return mean_results[0]
-
-    def setAttackEpochs(self, K: int):
-        """
-            sets attack_epochs
-
-            Parameters
-            ----------
-            K: int
-        """
-        self.attack_epochs = K
 
     def setIdx(self, idx: int):
         """

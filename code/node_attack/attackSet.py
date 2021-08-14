@@ -67,7 +67,7 @@ def attackSet(attack, approach: Approach, trainset: bool) -> Tuple[torch.Tensor]
 
         attack_results_for_all_attacked_nodes.append(attack_results.type(torch.long))
         # check if the model is changed in between one node attacks
-        if not attack.mode.isAdversarial():
+        if not (attack.mode.isAdversarial() and trainset):
             attack.setModel(model0)
 
     # print results and save accuracies
@@ -76,10 +76,9 @@ def attackSet(attack, approach: Approach, trainset: bool) -> Tuple[torch.Tensor]
         getDefenceResultsMean(attack=attack, approach=approach, attack_results=attack_results_for_all_attacked_nodes)
     attack.model_wrapper.model.attack = False
 
-    if print_answer is Print.YES:
+    if not trainset:
         print("######################## Attack Results ######################## ", flush=True)
         printAttackHeader(attack=attack, approach=approach)
-    if not trainset:
         printAttack(basic_log=attack.model_wrapper.basic_log, mean_defence_results=mean_defence_results,
                     approach=approach, max_attributes=data.x.shape[1] * attack.num_of_attackers)
 
@@ -104,7 +103,9 @@ def printAttackHeader(attack, approach: Approach):
     targeted_attack_str = 'Targeted' if attack.targeted else 'Untargeted'
     print("######################## " + distance_log + targeted_attack_str + " " + approach.string() + " " +
           attack.model_wrapper.model.name + " Attack ########################", flush=True)
-    info = "######################## Max Attack Epochs:" + str(attack.attack_epochs)
+    info = "########################"
+    if attack.dataset_type is DatasetType.CONTINUOUS:
+        info += " Max Attack Epochs:" + str(attack.continuous_epochs)
     if approach.isMultiple():
         info += " Attackers:{}".format(attack.num_of_attackers)
 
@@ -112,9 +113,8 @@ def printAttackHeader(attack, approach: Approach):
         if attack.l_inf is not None:
             info += " Linf:{:.2f}".format(attack.l_inf)
 
-    if attack.getDataset().type is DatasetType.DISCRETE:
-        if attack.l_0 is not None:
-            info += " l_0:{:.2f}".format(attack.l_0)
+    if attack.l_0 is not None:
+        info += " l_0:{:.2f}".format(attack.l_0)
 
     info += " lr:" + str(attack.lr)
     print(info + " ########################", flush=True)

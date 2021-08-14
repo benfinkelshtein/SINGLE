@@ -35,7 +35,7 @@ attack will produce a 2d matrix of EDGE approaches such as (EdgeGrad, MultiEdgeG
 3. **NODE_LINF**
 attack will produce a 2d matrix of `L_inf` values `{0.1-1.1}` as a function of the available nets, only for the basic SINGLE approach
 
-4. **ATTRIBUTES**
+4. **NODE_L0**
 attack will produce a 2d matrix of `L_0` values `{0.01-1.0}` as a function of the available nets, only for the basic SINGLE approach
 
 5. **DISTANCE**
