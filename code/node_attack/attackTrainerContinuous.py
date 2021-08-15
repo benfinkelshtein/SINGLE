@@ -49,6 +49,7 @@ def attackTrainerContinuous(attack, attacked_nodes: torch.Tensor, y_targets: tor
     # find best_attributes
     model0 = copy.deepcopy(model)
     previous_embeded_model = None
+    model_diff = 1
     for epoch in range(0, continuous_epochs):
         # train
         train(model=model, targeted=attack.targeted, attacked_nodes=attacked_nodes, y_targets=y_targets,
