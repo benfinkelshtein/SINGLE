@@ -48,6 +48,7 @@ def attackTrainerContinuous(attack, attacked_nodes: torch.Tensor, y_targets: tor
 
     # find best_attributes
     model0 = copy.deepcopy(model)
+    previous_embeded_model = None
     for epoch in range(0, continuous_epochs):
         # train
         train(model=model, targeted=attack.targeted, attacked_nodes=attacked_nodes, y_targets=y_targets,
@@ -82,10 +83,16 @@ def attackTrainerContinuous(attack, attacked_nodes: torch.Tensor, y_targets: tor
                 if print_answer is Print.YES:
                     print(log_template.format(node_num, epoch + 1, *results[:-1]), flush=True, end='')
                 break
+
+            if previous_embeded_model is not None:
+                model_diff = torch.norm(embeded_model.getInput() - previous_embeded_model.getInput(), p='fro')
+                if model_diff == 0:
+                    break
+            previous_embeded_model = copy.deepcopy(embeded_model)
         # prints
         if print_answer is Print.YES:
             print(log_template.format(node_num, epoch + 1, *results[:-1]), flush=True, end='')
-        if epoch != continuous_epochs - 1 and print_answer is not Print.NO:
+        if epoch != continuous_epochs - 1 and print_answer is not Print.NO and model_diff !=0:
             print()
 
     if print_answer is Print.YES:
