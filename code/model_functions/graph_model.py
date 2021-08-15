@@ -194,6 +194,9 @@ class NodeModel(Model):
         data.y = data.y[:-1]
         attack.setDataset(dataset=dataset)
 
+    def is_zero_grad(self) -> bool:
+        return False
+
 
 class EdgeModel(Model):
     """
@@ -285,12 +288,12 @@ class ModelWrapper(object):
         self.gnn_type = gnn_type
         self.num_layers = num_layers
         if node_model:
-            if gnn_type is GNN_TYPE.ROBUST_GCN:
-                self.model = RobustGCNModel(num_layers, dataset, device)
+            if gnn_type.is_robust_model():
+                self.model = gnn_type.get_model(dataset=dataset, device=device, num_layers=num_layers)
             else:
-                self.model = NodeModel(gnn_type, num_layers, dataset, device)
+                self.model = NodeModel(gnn_type=gnn_type, num_layers=num_layers, dataset=dataset, device=device)
         else:
-            self.model = EdgeModel(gnn_type, num_layers, dataset, device)
+            self.model = EdgeModel(gnn_type=gnn_type, num_layers=num_layers, dataset=dataset, device=device)
         self.node_model = node_model
         self.patience = patience
         self.device = device

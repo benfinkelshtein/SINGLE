@@ -51,13 +51,13 @@ class AttackMode(Enum):
         elif self is AttackMode.NODE_L0:
             return NodeGNNSL0Attack
 
-    def getApproaches(self, robust_gcn, twitter) -> List[Approach]:
+    def getApproaches(self, robust_gnn, twitter) -> List[Approach]:
         """
             gets the approaches for each attack mode
 
             Parameters
             ----------
-            robust_gcn: bool - whether the ROBUST_GCN is included in the list of GNNs for the attack
+            robust_gnn: bool - whether a robust_gnn iss included in the list of gnns
             twitter: bool - whether dataset is the TWITTER dataset
 
             Returns
@@ -68,7 +68,7 @@ class AttackMode(Enum):
             approaches = [NodeApproach.SINGLE, NodeApproach.INDIRECT, NodeApproach.MULTIPLE_ATTACKERS,
                           NodeApproach.DIRECT, NodeApproach.TOPOLOGY, NodeApproach.GRAD_CHOICE,
                           NodeApproach.ZERO_FEATURES]
-            if not robust_gcn and not twitter:
+            if not robust_gnn and not twitter:
                 approaches.append(NodeApproach.INJECTION)
             return approaches
         elif self is AttackMode.EDGE:

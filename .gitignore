@@ -4,3 +4,4 @@
 datasets/twitter/glove.pkl
 datasets/twitter/processed
 logs/*
+code/model_functions/rgnn/extension/*

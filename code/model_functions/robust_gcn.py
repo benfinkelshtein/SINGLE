@@ -425,6 +425,9 @@ class RobustGCNModel(nn.Module):
     def setNodesAttributes(self, idx_node, values):
         self.node_attribute_list[idx_node][0] = values
 
+    def is_zero_grad(self) -> bool:
+        return False
+
     # end of changes XXXXX
 
     def predict(self, input, nodes):

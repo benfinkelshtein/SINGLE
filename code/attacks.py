@@ -69,9 +69,9 @@ class oneGNNAttack(object):
         self.seed = seed
         self.device = device
 
-        robust_gcn = GNN_TYPE.ROBUST_GCN in self.gnn_types
+        robust_gnn = sum([gnn.is_robust_model() for gnn in self.gnn_types])
         twitter = args.dataset is DataSet.TWITTER
-        self.approaches = args.attMode.getApproaches(robust_gcn=robust_gcn, twitter=twitter)
+        self.approaches = args.attMode.getApproaches(robust_gnn=robust_gnn, twitter=twitter)
         self.num_of_attackers = 1
         print(f'######################## STARTING ATTACK ########################')
         self.print_args(args)
