@@ -60,6 +60,8 @@ def attackTrainerContinuous(attack, attacked_nodes: torch.Tensor, y_targets: tor
             changed_attributes = (model.getInput() != model0.getInput())[malicious_nodes].sum().item()
             test_discrete(model=model, model0=model0, malicious_nodes=malicious_nodes, attacked_nodes=attacked_nodes,
                           changed_attributes=changed_attributes, max_attributes=max_attributes)
+        else:
+            changed_attributes = 0
 
         # test
         results = test(data=data, model=model, targeted=attack.targeted, attacked_nodes=attacked_nodes,
