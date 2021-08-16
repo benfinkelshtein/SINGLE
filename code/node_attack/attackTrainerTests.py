@@ -69,7 +69,9 @@ def test_discrete(model, model0, malicious_nodes: torch.Tensor, attacked_nodes: 
     zeros_per_row = torch.all(attacked_nodes_output != 0, dim=1)
     rows_with_zeros = (zeros_per_row == 0).sum()
     assert len(indices_of_changed_nodes) >= 1 or rows_with_zeros == attacked_nodes.numel(), "#perturbed nodes is zero"
-    assert set(indices_of_changed_nodes) == set(malicious_nodes.tolist()) or rows_with_zeros == attacked_nodes.numel(),\
+    set_of_changed_nodes = set(indices_of_changed_nodes)
+    set_of_malicious_nodes = set(malicious_nodes.tolist())
+    assert set_of_changed_nodes.issubset(set_of_malicious_nodes) or rows_with_zeros == attacked_nodes.numel(),\
         "Attributes from non-malicious nodes are changed"
 
     assert changed_attributes_test.item() == changed_attributes, "The change of attributes is inconsistent"

@@ -79,8 +79,9 @@ def attackSet(attack, approach: Approach, trainset: bool) -> Tuple[torch.Tensor]
     if not trainset:
         print("######################## Attack Results ######################## ", flush=True)
         printAttackHeader(attack=attack, approach=approach)
+        num_of_attackers = attack.default_multiple_num_of_attackers if approach.isMultiple() else 1
         printAttack(basic_log=attack.model_wrapper.basic_log, mean_defence_results=mean_defence_results,
-                    approach=approach, max_attributes=data.x.shape[1] * attack.num_of_attackers)
+                    approach=approach, max_attributes=data.x.shape[1] * num_of_attackers)
 
     return attack_results_for_all_attacked_nodes, attacked_nodes, y_targets
 
@@ -107,7 +108,7 @@ def printAttackHeader(attack, approach: Approach):
     if attack.dataset_type is DatasetType.CONTINUOUS:
         info += " Max Attack Epochs:" + str(attack.continuous_epochs)
     if approach.isMultiple():
-        info += " Attackers:{}".format(attack.num_of_attackers)
+        info += " Attackers:{}".format(attack.default_multiple_num_of_attackers)
 
     if attack.getDataset().type is DatasetType.CONTINUOUS:
         if attack.l_inf is not None:

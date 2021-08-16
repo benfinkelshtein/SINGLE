@@ -3,7 +3,7 @@ from dataset_functions.graph_dataset import GraphDataset
 from node_attack.attackSet import attackSet, printAttackHeader, getDefenceResultsMean
 from classes.basic_classes import Print, DatasetType, GNN_TYPE, DataSet
 from helpers.fileNamer import fileNamer
-from classes.approach_classes import Approach
+from classes.approach_classes import Approach, NodeApproach
 from edge_attack.edgeAttackSet import edgeAttackSet
 
 from argparse import ArgumentParser
@@ -69,10 +69,6 @@ class oneGNNAttack(object):
         self.seed = seed
         self.device = device
 
-        robust_gnn = sum([gnn.is_robust_model() for gnn in self.gnn_types])
-        twitter = args.dataset is DataSet.TWITTER
-        self.approaches = args.attMode.getApproaches(robust_gnn=robust_gnn, twitter=twitter)
-        self.num_of_attackers = 1
         print(f'######################## STARTING ATTACK ########################')
         self.print_args(args)
 
@@ -156,21 +152,6 @@ class oneGNNAttack(object):
         attributes = torch.cat(attributes).to(self.device)
         self.saveResults(defence=defence, attributes=attributes)
 
-    def attackPerGNN(self) -> Tuple[torch.Tensor]:
-        """
-            executes the requested attack for all approaches on a specific gnn_type
-        """
-        defence = torch.zeros(len(self.approaches) + 1).to(self.device)
-        attributes = torch.zeros(len(self.approaches) + 1).to(self.device)
-        for approach_idx, approach in enumerate(self.approaches):
-            tmp_defence, tmp_attributes = self.attackPerApproachWrapper(approach)
-            defence[approach_idx + 1] = tmp_defence
-            attributes[approach_idx + 1] = tmp_attributes
-
-        defence[0] = self.model_wrapper.clean
-        attributes[0] = 0
-        return defence.unsqueeze(0), attributes.unsqueeze(0)
-
     def attackPerApproachWrapper(self, approach: Approach) -> Tuple[torch.Tensor]:
         """
             sets seeds before the execution of the requested attack
@@ -221,7 +202,7 @@ class oneGNNAttack(object):
             log: str - output log format
         """
         if self.mode.isDistance():
-            log = log_start + ' Distance: {:02d}, '.format(self.current_distance) + log_end
+            log = log_start + ' Distance: {:02d}'.format(self.current_distance) + log_end
         else:
             log = log_start + log_end
         return log
@@ -244,6 +225,12 @@ class oneGNNAttack(object):
             ----------
             defence: torch.Tensor - the defence %
             attributes: torch.Tensor - the % of attributes used for a *successful attack*
+        """
+        raise NotImplementedError
+
+    def attackPerGNN(self) -> Tuple[torch.Tensor]:
+        """
+            executes the requested attack for all approaches on a specific gnn_type
         """
         raise NotImplementedError
 
@@ -277,7 +264,14 @@ class NodeGNNSAttack(oneGNNAttack):
     def __init__(self, args: ArgumentParser, start_to_file: str = None, print_answer: str = None):
         start_to_file = 'NodeAttack' if start_to_file is None else start_to_file
         print_answer = Print.YES if print_answer is None else print_answer
-        super(NodeGNNSAttack, self).__init__(args=args, start_to_file=start_to_file, print_answer=print_answer)
+        self.default_multiple_num_of_attackers = 2
+
+        super(NodeGNNSAttack, self).__init__(args=args, start_to_file=start_to_file,
+                                             print_answer=print_answer)
+
+        any_robust_gnn = sum([gnn.is_robust_model() for gnn in self.gnn_types])
+        is_twitter = self.dataset_name is DataSet.TWITTER
+        self.approaches = self.mode.getApproaches(any_robust_gnn=any_robust_gnn, is_twitter=is_twitter)
 
     # a must-create
     def saveResults(self, defence: torch.Tensor, attributes: torch.Tensor):
@@ -291,6 +285,21 @@ class NodeGNNSAttack(oneGNNAttack):
         defence_df.insert(0, " ", gnns)
         defence_df.to_csv(self.file_name, float_format='%.3f', header=header, index=False, na_rep='')
 
+    def attackPerGNN(self) -> Tuple[torch.Tensor]:
+        """
+            executes the requested attack for all approaches on a specific gnn_type
+        """
+        defence = torch.zeros(len(self.approaches) + 1).to(self.device)
+        attributes = torch.zeros(len(self.approaches) + 1).to(self.device)
+        for approach_idx, approach in enumerate(self.approaches):
+            tmp_defence, tmp_attributes = self.attackPerApproachWrapper(approach)
+            defence[approach_idx + 1] = tmp_defence
+            attributes[approach_idx + 1] = tmp_attributes
+
+        defence[0] = self.model_wrapper.clean
+        attributes[0] = 0
+        return defence.unsqueeze(0), attributes.unsqueeze(0)
+
     def attackPerApproach(self, approach: Approach) -> Tuple[torch.Tensor]:
         """
             information at the generic base class oneGNNSAttack
@@ -300,7 +309,7 @@ class NodeGNNSAttack(oneGNNAttack):
         return mean_results[0], mean_results[1]
 
     # create
-    def setNumOfAttackers(self, num_of_attackers: int):
+    def setDefaultNumOfAttackers(self, num_of_attackers: int):
         """
             sets the number of attackers
 
@@ -308,7 +317,7 @@ class NodeGNNSAttack(oneGNNAttack):
             ----------
             num_of_attackers: int
         """
-        self.num_of_attackers = num_of_attackers
+        self.default_multiple_num_of_attackers = num_of_attackers
 
 
 class EdgeGNNSAttack(NodeGNNSAttack):
@@ -361,7 +370,7 @@ class NodeGNNSLinfAttack(NodeGNNSAttack):
         header = [''] + l_infs_string
         defence_df = pd.DataFrame(defence.to('cpu').numpy())
         defence_df.insert(0, " ", gnns)
-        defence_df.to_csv('Def_'+self.file_name, float_format='%.3f', header=header, index=False, na_rep='')
+        defence_df.to_csv('Def_' + self.file_name, float_format='%.3f', header=header, index=False, na_rep='')
 
     # overriding
     def checkL_infFlag(self, dataset: GraphDataset):
@@ -383,7 +392,7 @@ class NodeGNNSLinfAttack(NodeGNNSAttack):
         attributes = torch.zeros(len(self.l_inf_list)).to(self.device)
         for l_inf_idx, l_inf in enumerate(self.l_inf_list):
             self.setLinf(l_inf)
-            tmp_defence, tmp_attributes = self.attackPerApproachWrapper(approach=self.approaches[0])
+            tmp_defence, tmp_attributes = self.attackPerApproachWrapper(approach=NodeApproach.SINGLE)
             defence[l_inf_idx] = tmp_defence
             attributes[l_inf_idx] = tmp_attributes
 
@@ -475,7 +484,7 @@ class NodeGNNSL0Attack(NodeGNNSAttack):
         attributes = torch.zeros(len(self.l_0_list)).to(self.device)
         for l_0_idx, l_0 in enumerate(self.l_0_list):
             self.setL0(l_0)
-            tmp_defence, tmp_attributes = self.attackPerApproachWrapper(approach=self.approaches[0])
+            tmp_defence, tmp_attributes = self.attackPerApproachWrapper(approach=NodeApproach.SINGLE)
             defence[l_0_idx] = tmp_defence
             attributes[l_0_idx] = tmp_attributes
 
@@ -485,12 +494,12 @@ class NodeGNNSL0Attack(NodeGNNSAttack):
         """
             attackPerGNN for DISCRETE datasets
         """
-        max_attributes = self.getDataset().data.x.shape[1] * self.num_of_attackers
+        max_attributes = self.getDataset().data.x.shape[1]
         defence = torch.zeros(len(self.l_0_list)).to(self.device)
         attributes = torch.zeros(len(self.l_0_list)).to(self.device)
 
         self.setL0(1.0)
-        results, _, _ = attackSet(self, approach=self.approaches[0], trainset=False)
+        results, _, _ = attackSet(self, approach=NodeApproach.SINGLE, trainset=False)
         results = results.type(torch.FloatTensor)
         for l_0_idx, l_0 in enumerate(self.l_0_list):
             self.setL0(l_0)
@@ -547,7 +556,7 @@ class NodeGNNSDistanceAttack(NodeGNNSAttack):
         attributes = torch.zeros(self.max_distance).to(self.device)
         for distance in range(1, self.max_distance + 1):
             self.setCurrentDistance(distance)
-            tmp_defence, tmp_attributes = self.attackPerApproachWrapper(approach=self.approaches[0])
+            tmp_defence, tmp_attributes = self.attackPerApproachWrapper(approach=NodeApproach.SINGLE)
             defence[distance - 1] = tmp_defence
             attributes[distance - 1] = tmp_attributes
 
@@ -602,8 +611,8 @@ class NodeGNNSAdversarialAttack(NodeGNNSAttack):
         self.model_wrapper = AdversarialModelWrapper(node_model=True, gnn_type=gnn_type, num_layers=self.num_layers,
                                                      dataset=dataset, patience=self.patience, device=self.device,
                                                      seed=self.seed)
-        print(f'######################## LOADING Adversarial MODEL {self.model_wrapper.model.name}\
-        ########################')
+        print(f'######################## LOADING ADVERSARIAL MODEL {self.model_wrapper.model.name} ' +
+              '########################')
         self.model_wrapper.train(dataset=dataset, attack=self)
 
     def setIdx(self, idx: int):
@@ -649,8 +658,11 @@ class NodeGNNSMultipleAttack(NodeGNNSAttack):
         defence = torch.zeros(len(self.list_of_attackers) + 1).to(self.device)
         attributes = torch.zeros(len(self.list_of_attackers) + 1).to(self.device)
         for attackers_idx, num_of_attackers in enumerate(self.list_of_attackers):
-            self.setNumOfAttackers(num_of_attackers)
-            tmp_defence, tmp_attributes = self.attackPerApproachWrapper(approach=self.approaches[0])
+            self.setDefaultNumOfAttackers(num_of_attackers)
+            if num_of_attackers == 1:
+                tmp_defence, tmp_attributes = self.attackPerApproachWrapper(approach=NodeApproach.SINGLE)
+            else:
+                tmp_defence, tmp_attributes = self.attackPerApproachWrapper(approach=NodeApproach.MULTIPLE_ATTACKERS)
             defence[attackers_idx + 1] = tmp_defence
             attributes[attackers_idx + 1] = tmp_attributes
 

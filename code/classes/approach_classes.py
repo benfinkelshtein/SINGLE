@@ -76,9 +76,6 @@ class NodeApproach(Approach):
             malicious_node:  torch.Tensor
             attack: oneGNNAttack
         """
-        if self is not NodeApproach.MULTIPLE_ATTACKERS:
-            attack.setNumOfAttackers(num_of_attackers=1)
-
         malicious_node = None
         if self is NodeApproach.SINGLE or self is NodeApproach.INDIRECT or self is NodeApproach.DIRECT or self is \
                 NodeApproach.ZERO_FEATURES:
@@ -97,9 +94,9 @@ class NodeApproach(Approach):
                                                                             attacked_node=attacked_node)
             attack.setDataset(dataset=dataset)
         elif self is NodeApproach.MULTIPLE_ATTACKERS:
-            if BFS_size < attack.num_of_attackers:
+            if BFS_size < attack.default_multiple_num_of_attackers:
                 return None, attack
-            malicious_indices = np.random.choice(BFS_size, attack.num_of_attackers, replace=False)
+            malicious_indices = np.random.choice(BFS_size, attack.default_multiple_num_of_attackers, replace=False)
             malicious_indices = torch.tensor(malicious_indices.tolist()).to(attack.device)
             malicious_node = neighbours_and_dist[malicious_indices, 0]
         return malicious_node, attack

@@ -98,7 +98,7 @@ def attackVictim(attack, approach: Approach, attacked_node: torch.Tensor, y_targ
     if approach is NodeApproach.MULTIPLE_ATTACKERS:
         if malicious_node is None:
             if print_answer is Print.YES:
-                print(f': Too small for {attack.num_of_attackers} attackers\n', flush=True)
+                print(f': Too small for {attack.default_multiple_num_of_attackers} attackers\n', flush=True)
             return None
         else:
             print()
