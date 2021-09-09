@@ -146,11 +146,11 @@ class EdgeApproach(Approach):
         an object for the different edge-based-attack approaches
     """
     RANDOM = auto()
-    GRAD = auto()
-    GLOBAL_GRAD = auto()
+    SINGLE = auto()
+    GRAD_CHOICE = auto()
 
-    MULTI_GRAD = auto()
-    MULTI_GLOBAL_GRAD = auto()
+    MULTI = auto()
+    MULTI_GRAD_CHOICE = auto()
 
     def isGlobal(self) -> bool:
         """
@@ -160,7 +160,7 @@ class EdgeApproach(Approach):
             -------
             is_global: bool
         """
-        if self is EdgeApproach.GLOBAL_GRAD or self is EdgeApproach.MULTI_GLOBAL_GRAD:
+        if self is EdgeApproach.GRAD_CHOICE or self is EdgeApproach.MULTI_GRAD_CHOICE:
             return True
         return False
 
@@ -172,7 +172,7 @@ class EdgeApproach(Approach):
             -------
             is_multi: bool
         """
-        if self is EdgeApproach.MULTI_GRAD or self is EdgeApproach.MULTI_GLOBAL_GRAD:
+        if self is EdgeApproach.MULTI or self is EdgeApproach.MULTI_GRAD_CHOICE:
             return True
         return False
 
@@ -186,11 +186,11 @@ class EdgeApproach(Approach):
         """
         if self is EdgeApproach.RANDOM:
             return "random"
-        elif self is EdgeApproach.GRAD:
-            return "grad"
-        elif self is EdgeApproach.GLOBAL_GRAD:
-            return "global-grad"
-        elif self is EdgeApproach.MULTI_GRAD:
-            return "multi-grad"
-        elif self is EdgeApproach.MULTI_GLOBAL_GRAD:
-            return "multi-global-grad"
+        elif self is EdgeApproach.SINGLE:
+            return "single"
+        elif self is EdgeApproach.GRAD_CHOICE:
+            return "grad-choice"
+        elif self is EdgeApproach.MULTI:
+            return "multi"
+        elif self is EdgeApproach.MULTI_GRAD_CHOICE:
+            return "multi-grad-choice"

@@ -58,7 +58,7 @@ def edgeAttackSet(attack, approach: Approach, print_flag: bool) -> torch.Tensor:
         else:
             if print_flag:
                 print('Attack: {:03d}, Node: {}, Misclassified already!'.format(node_num + 1, attacked_node.item()))
-                if approach is EdgeApproach.MULTI_GRAD or approach is EdgeApproach.MULTI_GLOBAL_GRAD:
+                if approach is EdgeApproach.MULTI or approach is EdgeApproach.MULTI_GRAD_CHOICE:
                     print()
         attack.setModel(model0)
     attack.model_wrapper.model.attack = False

@@ -64,12 +64,12 @@ def edgeAttackVictim(attack, approach: Approach, print_flag: bool, attacked_node
         if print_flag:
             print(end_log_template.format(attack_results[3]), flush=True)
     else:
-        # EdgeApproach.GRAD
+        # EdgeApproach.SINGLE
         # select a random node on the graph - malicious index
         # Add all possible edges between the malicious index and the BFS of distance K-1
         # calculate the edge with the largest gradient and flip it, using edgeTrainer
         #
-        # EdgeApproach.GLOBAL_GRAD
+        # EdgeApproach.GRAD_CHOICE
         # Add all possible edges between all possible nodes and the BFS of distance K-1
         # calculate the edge with the largest gradient and flip it, using edgeTrainer
         malicious_index = model.expandEdgesByMalicious(dataset=dataset, approach=approach, attacked_node=attacked_node,

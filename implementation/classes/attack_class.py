@@ -72,7 +72,7 @@ class AttackMode(Enum):
                 approaches.append(NodeApproach.INJECTION)
             return approaches
         elif self is AttackMode.EDGE:
-            return [EdgeApproach.GRAD, EdgeApproach.GLOBAL_GRAD]
+            return [EdgeApproach.SINGLE, EdgeApproach.GRAD_CHOICE]
 
     def getGNN_TYPES(self) -> List[GNN_TYPE]:
         """
