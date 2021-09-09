@@ -64,9 +64,10 @@ The available input arguments are:
 
 * `--lr`: the learning rate
 
-* `--l_inf`: `L_inf` value, only for datasets that are represented in tf-idf (and not in many-hot-vec)
+* `--l_inf`: the `L_inf` value, the limit on the maximal change of an attribute that is used for the attack.
+Available only for datasets that are not represented in as a many-hot-vec or a one-hot-vec
 
-* `--l_0`: The limit on the ratio of attributes used in the attack
+* `--l_0`: the `L_0` value, the limit on the ratio of attributes used for the attack
 
 * `--targeted`: a bool flag that changes the attack to a targeted attack
 
@@ -75,6 +76,7 @@ The available input arguments are:
 * `--seed`: a seed for reproducability
 
 Note: Every combination of attack mode and GNN is available, except for the combination of Edge attacks+Robust GNNs
+
 
 ## Citation
 If you want to cite this work, please use this bibtex entry:
