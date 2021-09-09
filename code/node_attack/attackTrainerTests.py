@@ -38,7 +38,7 @@ def test_discrete(model, model0, malicious_nodes: torch.Tensor, attacked_nodes: 
         "Attributes from non-malicious nodes are changed"
         "The change of attributes is inconsistent"
         "Allowed number of attributes has been exceeded"
-
+        
         Parameters
         ----------
         model: Model - post-attack model
@@ -47,7 +47,7 @@ def test_discrete(model, model0, malicious_nodes: torch.Tensor, attacked_nodes: 
         attacked_nodes: torch.Tensor
         changed_attributes: int - the number of changed attributes according to the post and pre attack models
         max_attributes: int - the total allowed number of attributes
-
+        
         Returns
         -------
         x_abs_diff.max().item(): float - maximum change in an attribute

@@ -5,8 +5,9 @@ from torch_geometric.nn import GCNConv, SGConv
 
 from model_functions.modified_gnns import ModifiedGATConv, ModifiedGINConv, ModifiedSAGEConv
 from model_functions.robust_gcn import RobustGCNModel
-from model_functions.modified_rgnn import RGNNModel
-
+from model_functions.rgnn.rgnn_model import RGNNModel
+from model_functions.gal.gal_model import GalModel
+from model_functions.lat_gcn.lat_gcn_model import LATGCNModel
 
 class Print(Enum):
     """
@@ -67,7 +68,7 @@ class DataSet(Enum):
         if self is DataSet.PUBMED:
             return 0.04
         if self is DataSet.TWITTER:
-            return 0.001
+            return 0.01
 
     def get_l_0(self) -> float:
         """
@@ -82,7 +83,7 @@ class DataSet(Enum):
         if self is DataSet.PUBMED:
             return 0.05
         if self is DataSet.TWITTER:
-            return 0.05
+            return 0.1
 
     def string(self) -> str:
         """
@@ -110,10 +111,12 @@ class GNN_TYPE(Enum):
     GAT = auto()
     SAGE = auto()
     GIN = auto()
+    SGC = auto()
 
     ROBUST_GCN = auto()
-    SGC = auto()
     RGNN = auto()
+    GAL = auto()
+    LAT_GCN = auto()
 
     @staticmethod
     def from_string(s):
@@ -123,7 +126,8 @@ class GNN_TYPE(Enum):
             raise ValueError()
 
     def is_robust_model(self) -> bool:
-        if self is GNN_TYPE.ROBUST_GCN or self is GNN_TYPE.RGNN:
+        if self is GNN_TYPE.ROBUST_GCN or self is GNN_TYPE.RGNN \
+                or self is GNN_TYPE.GAL or self is GNN_TYPE.LAT_GCN:
             return True
         else:
             return False
@@ -162,6 +166,10 @@ class GNN_TYPE(Enum):
             return RobustGCNModel(num_layers=num_layers, dataset=dataset, device=device)
         elif self is GNN_TYPE.RGNN:
             return RGNNModel(dataset=dataset, device=device)
+        elif self is GNN_TYPE.GAL:
+            return GalModel(dataset=dataset, device=device)
+        elif self is GNN_TYPE.LAT_GCN:
+            return LATGCNModel(dataset=dataset, device=device)
 
     def string(self) -> str:
         """
@@ -185,6 +193,10 @@ class GNN_TYPE(Enum):
             return "SGC"
         elif self is GNN_TYPE.RGNN:
             return "RGNN"
+        elif self is GNN_TYPE.GAL:
+            return "GAL"
+        elif self is GNN_TYPE.LAT_GCN:
+            return "LAT_GCN"
 
     @staticmethod
     def convertGNN_TYPEListToStringList(gnn_list) -> List[str]:

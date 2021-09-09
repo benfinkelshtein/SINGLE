@@ -3,7 +3,7 @@ from dataset_functions.graph_dataset import GraphDataset
 from node_attack.attackSet import attackSet, printAttackHeader, getDefenceResultsMean
 from classes.basic_classes import Print, DatasetType, GNN_TYPE, DataSet
 from helpers.fileNamer import fileNamer
-from classes.approach_classes import Approach, NodeApproach
+from classes.approach_classes import Approach
 from edge_attack.edgeAttackSet import edgeAttackSet
 
 from argparse import ArgumentParser
@@ -81,7 +81,7 @@ class oneGNNAttack(object):
     def setDataset(self, dataset: torch_geometric.data.Data):
         """
             Sets a dataset
-
+            
             Parameters
             ----------
             dataset: torch_geometric.data.Data
@@ -91,7 +91,7 @@ class oneGNNAttack(object):
     def getDataset(self):
         """
             get a copy of the dataset
-
+            
             Returns
             -------
             dataset: torch_geometric.data.Data
@@ -101,7 +101,7 @@ class oneGNNAttack(object):
     def checkDistanceFlag(self, args: ArgumentParser):
         """
             Validates that the distance argument is not requested
-
+            
             Parameters
             ----------
             args: ArgumentParser - command line inputs
@@ -112,7 +112,7 @@ class oneGNNAttack(object):
     def setModelWrapper(self, gnn_type: GNN_TYPE):
         """
             Sets a ModelWrapper object and trains said ModelWrapper
-
+            
             Parameters
             ----------
             gnn_type: GNN_TYPE - the type of the gnn
@@ -128,7 +128,7 @@ class oneGNNAttack(object):
     def print_args(self, args: ArgumentParser):
         """
             a print of the arguments passed to the main.py
-
+            
             Parameters
             ----------
             args: ArgumentParser - command line inputs
@@ -156,7 +156,7 @@ class oneGNNAttack(object):
         """
             sets seeds before the execution of the requested attack
             (for a specific approach on a specific gnn_type)
-
+            
             Parameters
             ----------
             approach: Approach - the type of attack approach
@@ -171,7 +171,7 @@ class oneGNNAttack(object):
     def setFileName(self, dataset: GraphDataset, args: ArgumentParser):
         """
             sets the generic name for the output file
-
+            
             Parameters
             ----------
             dataset: GraphDataset
@@ -191,12 +191,12 @@ class oneGNNAttack(object):
     def extendLog(self, log_start: str, log_end: str) -> str:
         """
             sets the generic output log format
-
+            
             Parameters
             ----------
             log_start: str - prefix of the log format
             log_end: str -  suffix of the log format
-
+            
             Returns
             -------
             log: str - output log format
@@ -210,7 +210,7 @@ class oneGNNAttack(object):
     def setModel(self, model: Model):
         """
             sets the requested model in the ModeWrapper
-
+            
             Parameters
             ----------
             model: Model - the requested model
@@ -220,7 +220,7 @@ class oneGNNAttack(object):
     def saveResults(self, defence: torch.Tensor, attributes: torch.Tensor):
         """
             saves the results of the attack
-
+            
             Parameters
             ----------
             defence: torch.Tensor - the defence %
@@ -237,7 +237,7 @@ class oneGNNAttack(object):
     def attackPerApproach(self, approach) -> Tuple[torch.Tensor]:
         """
             executes the requested attack for a specific approach on a specific gnn_type
-
+            
             Parameters
             ----------
             approach: Approach - the type of attack approach
@@ -253,7 +253,7 @@ class oneGNNAttack(object):
 class NodeGNNSAttack(oneGNNAttack):
     """
         the basic Node-based-attack class
-
+        
         Parameters
         ----------
         args: ArgumentParser - command line inputs
@@ -312,7 +312,7 @@ class NodeGNNSAttack(oneGNNAttack):
     def setDefaultNumOfAttackers(self, num_of_attackers: int):
         """
             sets the number of attackers
-
+            
             Parameters
             ----------
             num_of_attackers: int
@@ -323,7 +323,7 @@ class NodeGNNSAttack(oneGNNAttack):
 class EdgeGNNSAttack(NodeGNNSAttack):
     """
         the basic Edge-based-attack class
-
+        
         Parameters
         ----------
         args: ArgumentParser - command line inputs
@@ -350,7 +350,7 @@ class EdgeGNNSAttack(NodeGNNSAttack):
 class NodeGNNSLinfAttack(NodeGNNSAttack):
     """
         a Node-based-attack class that tests different Linf values
-
+        
         Parameters
         ----------
         args: ArgumentParser - command line inputs
@@ -376,7 +376,7 @@ class NodeGNNSLinfAttack(NodeGNNSAttack):
     def checkL_infFlag(self, dataset: GraphDataset):
         """
             Validates that the dataset is not discrete in an L_inf based attack
-
+            
             Parameters
             ----------
             dataset: GraphDataset
@@ -417,7 +417,7 @@ class NodeGNNSLinfAttack(NodeGNNSAttack):
     def setLinf(self, l_inf: float):
         """
             sets the l_inf
-
+            
             Parameters
             ----------
             l_inf: float
@@ -428,7 +428,7 @@ class NodeGNNSLinfAttack(NodeGNNSAttack):
 class NodeGNNSL0Attack(NodeGNNSAttack):
     """
         a Node-based-attack class that tests different allowed attribute ratios
-
+        
         Parameters
         ----------
         args: ArgumentParser - command line inputs
@@ -514,7 +514,7 @@ class NodeGNNSL0Attack(NodeGNNSAttack):
     def setL0(self, l_0: float):
         """
             sets the l_0
-
+            
             Parameters
             ----------
             l_0: float
@@ -525,7 +525,7 @@ class NodeGNNSL0Attack(NodeGNNSAttack):
 class NodeGNNSDistanceAttack(NodeGNNSAttack):
     """
         a Node-based-attack class that tests different distances from the attacked node
-
+        
         Parameters
         ----------
         args: ArgumentParser - command line inputs
@@ -565,7 +565,7 @@ class NodeGNNSDistanceAttack(NodeGNNSAttack):
     def checkDistanceFlag(self, args: ArgumentParser):
         """
             Validates that the distance argument is requested
-
+            
             Parameters
             ----------
             args: ArgumentParser - command line inputs
@@ -577,7 +577,7 @@ class NodeGNNSDistanceAttack(NodeGNNSAttack):
     def setCurrentDistance(self, distance: int):
         """
             sets the distance
-
+            
             Parameters
             ----------
             distance: int
@@ -588,7 +588,7 @@ class NodeGNNSDistanceAttack(NodeGNNSAttack):
 class NodeGNNSAdversarialAttack(NodeGNNSAttack):
     """
         a Node-based-attack class that tests different train epochs (Ktrain) and different tesst epochs (Ktest)
-
+        
         Parameters
         ----------
         args: ArgumentParser - command line inputs
@@ -601,7 +601,7 @@ class NodeGNNSAdversarialAttack(NodeGNNSAttack):
     def setModelWrapper(self, gnn_type: GNN_TYPE):
         """
             Sets a ModelWrapper object adversarially trained, according to the requested Ktrain
-
+            
             Parameters
             ----------
             gnn_type: GNN_TYPE - the type of the gnn
@@ -618,7 +618,7 @@ class NodeGNNSAdversarialAttack(NodeGNNSAttack):
     def setIdx(self, idx: int):
         """
             sets the idx
-
+            
             Parameters
             ----------
             idx: int
@@ -629,7 +629,7 @@ class NodeGNNSAdversarialAttack(NodeGNNSAttack):
 class NodeGNNSMultipleAttack(NodeGNNSAttack):
     """
         a Node-based-attack class that tests different sizes for the number of attacker nodes
-
+        
         Parameters
         ----------
         args: ArgumentParser - command line inputs

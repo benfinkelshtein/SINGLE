@@ -12,7 +12,7 @@ def basicTrainer(model, optimizer: torch.optim, data: torch_geometric.data.Data,
         model: Model
         optimizer: torch.optim
         data: torch_geometric.data.Data
-        patience:
+        patience: int
 
         Returns
         -------

@@ -67,13 +67,18 @@ def attackTrainerDiscrete(attack, attacked_nodes: torch.Tensor, y_targets: torch
         # train
         train(model=model, targeted=attack.targeted, attacked_nodes=attacked_nodes, y_targets=y_targets,
               optimizer=optimizer)
-        num_attributes_left = flipUpBestNewAttributes(model=model, model0=prev_model, malicious_nodes=malicious_nodes,
-                                                      num_attributes_left=num_attributes_left)
-        changed_attributes = limited_max_attributes - num_attributes_left.sum().item()
+        is_zero_grad = model.is_zero_grad()
 
         # test correctness
-        test_discrete(model=model, model0=model0, malicious_nodes=malicious_nodes, attacked_nodes=attacked_nodes,
-                      changed_attributes=changed_attributes, max_attributes=limited_max_attributes)
+        if not is_zero_grad:
+            num_attributes_left = flipUpBestNewAttributes(model=model, model0=prev_model, malicious_nodes=malicious_nodes,
+                                                          num_attributes_left=num_attributes_left)
+            changed_attributes = limited_max_attributes - num_attributes_left.sum().item()
+
+            test_discrete(model=model, model0=model0, malicious_nodes=malicious_nodes, attacked_nodes=attacked_nodes,
+                          changed_attributes=changed_attributes, max_attributes=limited_max_attributes)
+        else:
+            changed_attributes = 0
 
         # test
         results = test(data=data, model=model, targeted=attack.targeted, attacked_nodes=attacked_nodes,
@@ -85,6 +90,8 @@ def attackTrainerDiscrete(attack, attacked_nodes: torch.Tensor, y_targets: torch
         if print_answer is Print.YES:
             print(log_template.format(node_num, epoch, changed_attributes, *results[:-1]), flush=True, end='')
         # breaks
+        if is_zero_grad:
+            break
         if results[3] or changed_attributes == limited_max_attributes or changed_attributes == prev_changed_attributes:
             break
         prev_changed_attributes = changed_attributes

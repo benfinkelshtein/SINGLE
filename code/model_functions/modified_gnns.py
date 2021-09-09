@@ -63,13 +63,13 @@ class ModifiedGATConv(GATConv):
 
         # propagate_type: (x: OptPairTensor, alpha: OptPairTensor)
 
-        # start of modified code #########
+        # start of modified implementation #########
         if edge_weight is None:
             edge_weight = torch.ones((edge_index.size(1),), dtype=x.dtype,
                                      device=edge_index.device)
         out = self.propagate(edge_index, x=(x_l, x_r),
                              alpha=(alpha_l, alpha_r), size=size, edge_weight=edge_weight)
-        # end of modified code #########
+        # end of modified implementation #########
 
         alpha = self._alpha
         self._alpha = None
@@ -100,9 +100,9 @@ class ModifiedGATConv(GATConv):
 
         # Adding [-inf, 0] weight to every edge
 
-        # start of modified code #########
+        # start of modified implementation #########
         alpha += torch.log(edge_weight).view(-1, 1)
-        # end of modified code #########
+        # end of modified implementation #########
 
         alpha = softmax(alpha, index, ptr, size_i)
         self._alpha = alpha
@@ -123,12 +123,12 @@ class ModifiedGINConv(GINConv):
 
         # propagate_type: (x: OptPairTensor)
 
-        # start of modified code #########
+        # start of modified implementation #########
         if edge_weight is None:
             edge_weight = torch.ones((edge_index.size(1),), dtype=x[0].dtype,
                                      device=edge_index.device)
         out = self.propagate(edge_index, x=x, size=None, edge_weight=edge_weight)
-        # end of modified code #########
+        # end of modified implementation #########
 
         x_r = x[1]
         if x_r is not None:
@@ -137,9 +137,9 @@ class ModifiedGINConv(GINConv):
         return self.nn(out)
 
     def message(self, x_j: Tensor, edge_weight: Tensor) -> Tensor:
-        # start of modified code #########
+        # start of modified implementation #########
         return edge_weight.view(-1, 1) * x_j
-        # end of modified code #########
+        # end of modified implementation #########
 
 
 class ModifiedSAGEConv(SAGEConv):
@@ -154,13 +154,13 @@ class ModifiedSAGEConv(SAGEConv):
 
         # propagate_type: (x: OptPairTensor)
 
-        # start of modified code #########
+        # start of modified implementation #########
         if edge_weight is None:
             edge_weight = torch.ones((edge_index.size(1),), dtype=x[0].dtype,
                                      device=edge_index.device)
 
         out = self.propagate(edge_index, x=x, size=size, edge_weight=edge_weight)
-        # start of modified code #########
+        # start of modified implementation #########
 
         out = self.lin_l(out)
 
@@ -174,6 +174,6 @@ class ModifiedSAGEConv(SAGEConv):
         return out
 
     def message(self, x_j: Tensor, edge_weight: Tensor) -> Tensor:
-        # start of modified code #########
+        # start of modified implementation #########
         return edge_weight.view(-1, 1) * x_j
-        # end of modified code #########
+        # end of modified implementation #########

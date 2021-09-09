@@ -19,7 +19,7 @@ To download the Twitter dataset:
 ```twitter 
 wget https://www.dropbox.com/s/wmlfy463dqs07hu/twitter-dataset.tar.gz
 tar -xvzf twitter-dataset.tar.gz
-mv twitter-dataset/data/* GNNattack/datasets/twitter
+mv twitter-dataset/data/* ./datasets/twitter
 ```
 
 ## Attacking

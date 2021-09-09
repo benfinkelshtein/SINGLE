@@ -37,7 +37,7 @@ class GraphDataset(object):
         data = self._loadDataset(dataset, device)
 
         if dataset is DataSet.TWITTER:
-            train_mask, val_mask, test_mask = torch.load('../masks/twitter.dat')
+            train_mask, val_mask, test_mask = torch.load('./masks/twitter.dat')
             setattr(data, 'train_mask', train_mask)
             setattr(data, 'val_mask', val_mask)
             setattr(data, 'test_mask', test_mask)

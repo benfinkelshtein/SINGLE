@@ -1,11 +1,12 @@
 from classes.basic_classes import GNN_TYPE
 from model_functions.basicTrainer import basicTrainer, test
 from model_functions.robust_gcn import train
+from model_functions.gal.gal_trainer import galTrainer
+from model_functions.lat_gcn.lat_gcn_trainer import latgcnTrainer
 from helpers.fileNamer import fileNamer
 from adversarial_attack.adversarialTrainer import adversarialTrainer
 from helpers.getGitPath import getGitPath
 from classes.basic_classes import DatasetType
-from model_functions.robust_gcn import RobustGCNModel
 from dataset_functions.graph_dataset import GraphDataset
 from classes.approach_classes import Approach
 
@@ -216,8 +217,8 @@ class EdgeModel(Model):
         return self.x
 
     @torch.no_grad()
-    def expandEdgesByMalicious(self, dataset: GraphDataset, approach: Approach, neighbours: torch.Tensor,
-                               device: torch.cuda) -> torch.Tensor:
+    def expandEdgesByMalicious(self, dataset: GraphDataset, approach: Approach, attacked_node: torch.Tensor,
+                               neighbours: torch.Tensor, device: torch.cuda) -> torch.Tensor:
         """
             adds edges with zero weights to the malicious/attacker node according to the attack approach
 
@@ -225,6 +226,7 @@ class EdgeModel(Model):
             ----------
             dataset: GraphDataset
             approach: Approach
+            attacked_node: torch.Tensor -  the victim node
             neighbours: torch.Tensor - 2d-tensor that includes
                                        1st-col - the nodes that are in the victim nodes BFS neighborhood
                                        2nd-col - the distance of said nodes from the victim node
@@ -235,6 +237,7 @@ class EdgeModel(Model):
             malicious_index: torch.Tensor - the injected/attacker/malicious node index
         """
         data = dataset.data
+        clique = torch.cat((attacked_node, neighbours))
         n = data.num_nodes
         zero_dim_edge_index = []
         first_dim_edge_index = []
@@ -244,7 +247,7 @@ class EdgeModel(Model):
         if not approach.isGlobal():
             malicious_index = np.random.choice(data.num_nodes, 1).item()
 
-        for neighbour_num, neighbour in enumerate(neighbours):
+        for neighbour_num, neighbour in enumerate(clique):
             ignore = dataset.reversed_arr_list[neighbour]  # edges which already exist
 
             tmp_zero_dim_edge_index = []
@@ -293,7 +296,10 @@ class ModelWrapper(object):
             else:
                 self.model = NodeModel(gnn_type=gnn_type, num_layers=num_layers, dataset=dataset, device=device)
         else:
-            self.model = EdgeModel(gnn_type=gnn_type, num_layers=num_layers, dataset=dataset, device=device)
+            if gnn_type.is_robust_model():
+                exit("Robust GNNs are tested against node-based attacks only")
+            else:
+                self.model = EdgeModel(gnn_type=gnn_type, num_layers=num_layers, dataset=dataset, device=device)
         self.node_model = node_model
         self.patience = patience
         self.device = device
@@ -382,18 +388,26 @@ class ModelWrapper(object):
             test_accuracy: torch.Tensor
         """
         data = dataset.data
-        if self.gnn_type == GNN_TYPE.ROBUST_GCN and dataset.type is DatasetType.DISCRETE:
-            idx_train = data.train_mask.nonzero().T[0]
-            idx_train = idx_train.cpu().detach().numpy()
+        if self.gnn_type == GNN_TYPE.ROBUST_GCN:
+            if dataset.type is DatasetType.DISCRETE:
 
-            idx_unlabeled = data.test_mask.nonzero().T[0]
-            idx_unlabeled = idx_unlabeled.cpu().detach().numpy()
+                idx_train = data.train_mask.nonzero().T[0]
+                idx_train = idx_train.cpu().detach().numpy()
 
-            train(gcn_model=self.model, X=data.x, y=data.y, idx_train=idx_train, idx_unlabeled=idx_unlabeled, q=3)
-            train_accuracy, val_accuracy, test_accuracy = test(model=self.model, data=data)
-            model_log = 'Basic Model - Train: {:.4f}, Val: {:.4f}, Test: {:.4f}' \
-                .format(train_accuracy, val_accuracy, test_accuracy)
-            return self.model, model_log, test_accuracy
+                idx_unlabeled = data.test_mask.nonzero().T[0]
+                idx_unlabeled = idx_unlabeled.cpu().detach().numpy()
+
+                train(gcn_model=self.model, X=data.x, y=data.y, idx_train=idx_train, idx_unlabeled=idx_unlabeled, q=3)
+                train_accuracy, val_accuracy, test_accuracy = test(model=self.model, data=data)
+                model_log = 'Basic Model - Train: {:.4f}, Val: {:.4f}, Test: {:.4f}' \
+                    .format(train_accuracy, val_accuracy, test_accuracy)
+                return self.model, model_log, test_accuracy
+            elif dataset.type is DatasetType.CONTINUOUS:
+                exit(" According to the ROBUST GCN paper, this gnn works only for discrete datasets")
+        elif self.gnn_type == GNN_TYPE.GAL:  # RGG
+            return galTrainer(self.model, data)
+        elif self.gnn_type == GNN_TYPE.LAT_GCN:  # RGG
+            return latgcnTrainer(self.model, self.optimizer, data, self.patience)
 
         return basicTrainer(self.model, self.optimizer, data, self.patience)
 

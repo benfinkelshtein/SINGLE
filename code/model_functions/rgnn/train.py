@@ -1,4 +1,4 @@
-"""Training code.
+"""Training implementation.
 """
 import logging
 

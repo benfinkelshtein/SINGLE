@@ -1,7 +1,7 @@
 """
 #######################################################################################################################
 
-The Subsequent code was mostly copied from https://github.com/DSE-MSU/DeepRobust
+The Subsequent implementation was mostly copied from https://github.com/DSE-MSU/DeepRobust
 
 #######################################################################################################################
 

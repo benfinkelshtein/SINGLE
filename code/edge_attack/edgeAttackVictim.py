@@ -39,8 +39,9 @@ def edgeAttackVictim(attack, approach: Approach, print_flag: bool, attacked_node
     neighbours_and_dist = kBFS(root=attacked_node, device=device, reversed_arr_list=dataset.reversed_arr_list,
                                K=model.num_layers - 1)
     if not neighbours_and_dist.nelement():
-        root = torch.tensor([[attacked_node, 0]]).to(device=device)
-        neighbours_and_dist = torch.cat((root, neighbours_and_dist)).to(dtype=torch.long)
+        if print_flag:
+            print('Attack: {:03d}, Node: {} is a solo node'.format(node_num, attacked_node.item()), flush=True)
+        return None
     malicious_indices = neighbours_and_dist[:, 0]
     if print_flag:
         print('Attack: {:03d}, Node: {}'.format(node_num, attacked_node.item()), flush=True, end='')
@@ -71,8 +72,8 @@ def edgeAttackVictim(attack, approach: Approach, print_flag: bool, attacked_node
         # EdgeApproach.GLOBAL_GRAD
         # Add all possible edges between all possible nodes and the BFS of distance K-1
         # calculate the edge with the largest gradient and flip it, using edgeTrainer
-        malicious_index = model.expandEdgesByMalicious(dataset=dataset, approach=approach, neighbours=malicious_indices,
-                                                       device=device)
+        malicious_index = model.expandEdgesByMalicious(dataset=dataset, approach=approach, attacked_node=attacked_node,
+                                                       neighbours=malicious_indices, device=device)
         attack_results = edgeTrainer(data=data, approach=approach, targeted=targeted, model=model,
                                      attacked_node=attacked_node, y_target=y_target, node_num=node_num,
                                      malicious_index=malicious_index, device=device, print_flag=print_flag,

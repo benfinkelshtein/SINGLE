@@ -16,11 +16,11 @@ from typing import Tuple
 def adversarialTrainer(attack):
     """
         trains the model adversarial (the model learns to classify correctly harmful feature matrices)
-
+        
         Parameters
         ----------
         attack: oneGNNAttack
-
+        
         Returns
         -------
         model: Model
@@ -69,12 +69,12 @@ def adversarialTrainer(attack):
 def getTheMostHarmfulInput(attack, approach: Approach) -> Tuple[torch.Tensor]:
     """
         attacks the model and extract the attacked feature matrix
-
+        
         Parameters
         ----------
         attack: oneGNNAttack
         approach: torch_geometric.data.Data
-
+        
         Returns
         -------
         attacked_nodes: torch.Tensor - the victim nodes
@@ -91,7 +91,7 @@ def train(model, optimizer: torch.optim, data: torch_geometric.data.Data, attack
           attacked_x: torch.Tensor, adv_scale: int = 1):
     """
         trains the model with both losses - clean and adversarial, for one epoch
-
+        
         Parameters
         ----------
         model: Model

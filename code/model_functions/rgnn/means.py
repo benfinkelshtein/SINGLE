@@ -23,7 +23,7 @@ try:
         if not hasattr(custom_cuda_kernels, 'topk'):
             raise ImportError()
     except ImportError:
-        rgnn_dir = os.path.join(getGitPath(), 'code', 'model_functions', 'rgnn')
+        rgnn_dir = os.path.join(getGitPath(), 'implementation', 'model_functions', 'rgnn')
         cache_dir = os.path.join(rgnn_dir, 'extension', socket.gethostname(), torch.__version__)
 
         csrc_dir = os.path.join(rgnn_dir, 'kernels', 'csrc')
@@ -214,7 +214,7 @@ def soft_weighted_medoid_k_neighborhood(
     if not x.is_cuda and n < threshold_for_dense_if_cpu:
         return dense_cpu_soft_weighted_medoid_k_neighborhood(A, x, k, temperature, with_weight_correction)
 
-    # Custom CUDA extension / Numba JIT code for the top k values of the sparse adjacency matrix
+    # Custom CUDA extension / Numba JIT implementation for the top k values of the sparse adjacency matrix
     top_k_weights, top_k_idx = _sparse_top_k(A, k=k, return_sparse=False)
 
     # Partial distance matrix calculation
